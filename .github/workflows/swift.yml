@@ -13,8 +13,12 @@ jobs:
       # If macos-latest fails, we still don't want to cancel ubuntu-latest or the other way around.
       fail-fast: false
       matrix:
-        os: [ubuntu-latest]
+        os: [macos-latest, ubuntu-latest]
         kind: [debug]
+        include:
+          # On linux also build and test release.
+          - os: ubuntu-latest
+            kind: release
 
     runs-on: ${{ matrix.os }}
 
