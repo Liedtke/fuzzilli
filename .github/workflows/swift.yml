@@ -34,7 +34,7 @@ jobs:
         run: |
           sudo apt install -y libcurl4-openssl-dev
           $HOME/.local/share/swiftly/bin/swiftly install 6.1.2
-          swiftly use 6.1.2
+          $HOME/.local/share/swiftly/bin/swiftly use 6.1.2
       - name: Swift Version
         run: swift --version
       - uses: actions/checkout@v2
