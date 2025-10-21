@@ -32,8 +32,8 @@ jobs:
           export PATH="$HOME/.local/share/swiftly/bin/:${PATH}"
       - name: Install swift
         run: |
-          swiftly install 6.1.2
-          swiftly use 6.1.2
+          $HOME/.local/share/swiftly/bin/swiftly install 6.1.2
+          $HOME/.local/share/swiftly/bin/swiftly use 6.1.2
       - name: Swift Version
         run: swift --version
       - uses: actions/checkout@v2
