@@ -23,12 +23,11 @@ jobs:
         with:
           node-version: 25-nightly
       - name: Install swiftly
-        run: curl -O https://download.swift.org/swiftly/linux/swiftly-$(uname -m).tar.gz && \
-             tar zxf swiftly-$(uname -m).tar.gz && \
-             ./swiftly init --quiet-shell-followup --skip-install && \
-             . "${SWIFTLY_HOME_DIR:-$HOME/.local/share/swiftly}/env.sh" && \
-             hash -r && \
+        run: curl -O https://download.swift.org/swiftly/linux/swiftly-$(uname -m).tar.gz
+             tar zxf swiftly-$(uname -m).tar.gz
+             ./swiftly init --quiet-shell-followup --skip-install
              rm swiftly-$(uname -m).tar.gz
+             export PATH="$HOME/.local/share/swiftly/bin/:${PATH}"
       - name: Install swift
         run: swiftly install 6.1.2 && swiftly use 6.1.2
       - name: Swift Version
