@@ -22,19 +22,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 25-nightly
-      - name: Install swiftly
-        run: |
-          curl -O https://download.swift.org/swiftly/linux/swiftly-$(uname -m).tar.gz
-          tar zxf swiftly-$(uname -m).tar.gz
-          ./swiftly init --quiet-shell-followup --skip-install
-          . "${SWIFTLY_HOME_DIR:-$HOME/.local/share/swiftly}/env.sh"
-          hash -r
-          rm swiftly-$(uname -m).tar.gz
-      - name: Install swift
-        run: |
-          sudo apt install -y libcurl4-openssl-dev
-          $HOME/.local/share/swiftly/bin/swiftly install 6.1.2
-          $HOME/.local/share/swiftly/bin/swiftly use 6.1.2
       - name: Swift Version
         run: swift --version
       - uses: actions/checkout@v2
