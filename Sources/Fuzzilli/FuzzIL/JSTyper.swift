@@ -939,6 +939,11 @@ public struct JSTyper: Analyzer {
                 addSignatureType(def: instr.output, signature: op.signature, inputs: instr.inputs)
                 finishTypeGroup()
                 registerWasmTypeDef(instr.output)
+            case .wasmDefineAdHocModuleSignatureType(let op):
+                startTypeGroup()
+                addSignatureType(def: instr.output, signature: op.signature, inputs: instr.inputs)
+                finishTypeGroup()
+                registerWasmTypeDef(instr.output)
             default:
                 if instr.numInnerOutputs + instr.numOutputs != 0 {
                     fatalError("Missing typing of outputs for \(instr.op.opcode)")

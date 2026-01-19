@@ -1499,6 +1499,11 @@ message WasmDefineAdHocSignatureType {
     repeated WasmILType outputTypes = 2;
 }
 
+message WasmDefineAdHocModuleSignatureType {
+    repeated WasmILType parameterTypes = 1;
+    repeated WasmILType outputTypes = 2;
+}
+
 message WasmDefineArrayType {
     WasmILType elementType = 1;
     bool mutability = 2;

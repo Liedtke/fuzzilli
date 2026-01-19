@@ -2433,3 +2433,20 @@ final class WasmDefineAdHocSignatureType: WasmOperation {
         super.init(numInputs: numInputs, numOutputs: 1, requiredContext: [.wasmFunction])
     }
 }
+
+// Same as WasmDefineAdHocSignatureType but not on the .wasmFunction context but .wasm (module).
+// This is needed in cases where we aren't in the JS context any more but need a Wasm signature.
+// TODO(mliedtke): We should explore alternative options. Right now this is a much better compromise
+// than failing often to generate operations that require a signature, e.g. something simple like a
+// Wasm function.
+final class WasmDefineAdHocModuleSignatureType: WasmOperation {
+    override var opcode: Opcode { .wasmDefineAdHocModuleSignatureType(self) }
+    let signature: WasmSignature
+
+    init(signature: WasmSignature) {
+        self.signature = signature
+        let numInputs = (signature.outputTypes + signature.parameterTypes).map {
+            $0.requiredInputCount() }.reduce(0) { $0 + $1 }
+        super.init(numInputs: numInputs, numOutputs: 1, requiredContext: [.wasm])
+    }
+}

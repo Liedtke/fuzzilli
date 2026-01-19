@@ -1224,7 +1224,12 @@ public class WasmLifter {
         }
     }
 
-    /// This function updates the internal state of the lifter before actually emitting code to the wasm module. This should be invoked before we try to get the corresponding bytes for the Instruction
+    /// This function updates the internal state of the lifter before actually emitting code to the
+    /// wasm module. This should be invoked before we try to get the corresponding bytes for the
+    /// Instruction.
+    /// Returns true if the instruction requires emitting code into the module's code section (which
+    /// means it is true for almost all instructions appearing inside a wasm function and false for
+    /// all instructions outside of a wasm function like a Wasm memory definition).
     private func updateLifterState(wasmInstruction instr: Instruction) -> Bool {
         // Make sure that we actually have a Wasm operation here.
         assert(instr.op is WasmOperation)
@@ -1321,6 +1326,8 @@ public class WasmLifter {
             assert(self.exports.contains(where: {
                 $0.isTag && $0.getDefInstr()!.output == instr.output
             }))
+        case .wasmDefineAdHocModuleSignatureType(_):
+            break
         default:
             return true
         }

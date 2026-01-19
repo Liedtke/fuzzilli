@@ -4615,6 +4615,29 @@ public class ProgramBuilder {
         return params => returnTypes
     }
 
+    public func randomWasmGcSignature() -> (signature: WasmSignature, indexTypes: [Variable]) {
+        let typeCount = Int.random(in: 0...10)
+        let returnCount = Int.random(in: 0...typeCount)
+        let parameterCount = typeCount - returnCount
+
+        var indexTypes: [Variable] = []
+        let chooseType = {
+            if let elementType = self.randomVariable(ofType: .wasmTypeDef()), probability(0.25) {
+                let nullability =
+                    self.type(of: elementType).wasmTypeDefinition!.description == .selfReference
+                    || probability(0.5)
+                indexTypes.append(elementType)
+                return ILType.wasmRef(.Index(), nullability: nullability)
+            } else {
+                // TODO(mliedtke): Extend list with abstract heap types.
+                return chooseUniform(from: [.wasmi32, .wasmi64, .wasmf32, .wasmf64, .wasmSimd128])
+            }
+        }
+        let signature = (0..<parameterCount).map {_ in chooseType()}
+                        => (0..<returnCount).map {_ in chooseType()}
+        return (signature, indexTypes)
+    }
+
     public func randomWasmBlockOutputTypes(upTo n: Int) -> [ILType] {
         // TODO(mliedtke): This should allow more types as well as non-nullable references for all
         // abstract heap types. To be able to emit them, generateRandomWasmVar() needs to be able
@@ -4694,12 +4717,12 @@ public class ProgramBuilder {
     }
 
     /// Like wasmDefineSignatureType but instead of within a type group this defines a signature
-    /// type directly inside a wasm function.
+    /// type directly inside a wasm function or wasm module.
     /// This takes a signature with resolved index types for ease-of-use (meaning it accepts full
     /// index reference types directly inside the signature).
     @discardableResult
-    func wasmDefineAdHocSignatureType(signature: WasmSignature) -> Variable {
-        let indexTypes = (signature.parameterTypes + signature.outputTypes)
+    func wasmDefineAdHocSignatureType(signature: WasmSignature, indexTypes: [Variable]? = nil) -> Variable {
+        let indexTypes = indexTypes ?? (signature.parameterTypes + signature.outputTypes)
                 .filter {$0.Is(.anyIndexRef)}
                 .map(getWasmTypeDef)
         let cleanIndexTypes = {(type: ILType) -> ILType in
@@ -4709,7 +4732,12 @@ public class ProgramBuilder {
         }
         let signature = signature.parameterTypes.map(cleanIndexTypes)
             => signature.outputTypes.map(cleanIndexTypes)
-        return emit(WasmDefineAdHocSignatureType(signature: signature), withInputs: indexTypes).output
+        if context.contains(.wasmFunction) {
+            return emit(WasmDefineAdHocSignatureType(signature: signature), withInputs: indexTypes).output
+        } else {
+            assert(context.contains(.wasm))
+            return emit(WasmDefineAdHocModuleSignatureType(signature: signature), withInputs: indexTypes).output
+        }
     }
 
     @discardableResult
@@ -4930,6 +4958,8 @@ public class ProgramBuilder {
              .wasmEndTryDelegate(_),
              .wasmEndTryTable(_):
             activeWasmModule!.blockSignatures.pop()
+        case .wasmDefineAdHocModuleSignatureType(_):
+            break
 
         default:
             assert(!instr.op.requiredContext.contains(.objectLiteral))

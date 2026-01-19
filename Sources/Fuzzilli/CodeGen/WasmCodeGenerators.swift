@@ -1602,6 +1602,15 @@ public let WasmCodeGenerators: [CodeGenerator] = [
     },
 
     CodeGenerator(
+        "WasmAdHocModuleSignature",
+        inContext: .single(.wasm),
+        producesComplex: [.init(.wasmTypeDef(), .IsWasmFunction)]
+    ) { b in
+        let (signature, indexTypes) = b.randomWasmGcSignature()
+        b.wasmDefineAdHocSignatureType(signature: signature, indexTypes: indexTypes)
+    },
+
+    CodeGenerator(
         "WasmDefineTagGenerator", inContext: .single(.wasm),
         produces: [.object(ofGroup: "WasmTag")]
     ) { b in

@@ -367,4 +367,5 @@ enum Opcode {
     case wasmStructNew(WasmStructNew)
     case wasmRefEq(WasmRefEq)
     case wasmRefTest(WasmRefTest)
+    case wasmDefineAdHocModuleSignatureType(WasmDefineAdHocModuleSignatureType)
 }

@@ -263,6 +263,7 @@ public let codeGeneratorWeights = [
     "WasmGlobalLoadGenerator":                  2,
     "WasmReassignmentGenerator":                2,
     "WasmDefineTagGenerator":                   4,
+    "WasmAdHocModuleSignature":                 2,
 
     // Primitive Value Generators
     "WasmLoadi32Generator":                     4,
