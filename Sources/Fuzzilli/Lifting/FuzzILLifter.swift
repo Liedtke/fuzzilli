@@ -1114,10 +1114,10 @@ public class FuzzILLifter: Lifter {
 
         case .wasmBeginTryTable(let op):
             let args = instr.inputs.map(lift)
-            let blockArgs = args.prefix(op.signature.parameterTypes.count).joined(separator: ", ")
-            w.emit("WasmBeginTryTable (\(op.signature)) [\(blockArgs)] -> L:\(instr.innerOutput(0)) [\(liftCallArguments(instr.innerOutputs(1...)))]")
+            let blockArgs = args.prefix(1 + op.parameterCount).joined(separator: ", ")
+            w.emit("WasmBeginTryTable [\(blockArgs)] -> L:\(instr.innerOutput(0)) [\(liftCallArguments(instr.innerOutputs(1...)))]")
             w.increaseIndentionLevel(by: 2)
-            var inputIndex =  op.signature.parameterTypes.count
+            var inputIndex =  1 + op.parameterCount
             op.catches.forEach { kind in
                 if kind == .Ref || kind == .NoRef {
                     w.emit("catching \(kind) \(args[inputIndex]) to \(args[inputIndex + 1])")

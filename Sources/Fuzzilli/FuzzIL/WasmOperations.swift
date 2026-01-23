@@ -1351,25 +1351,27 @@ final class WasmBeginTryTable: WasmOperation {
     }
 
     override var opcode: Opcode { .wasmBeginTryTable(self) }
-    let signature: WasmSignature
     let catches: [CatchKind]
 
-    init(with signature: WasmSignature, catches: [CatchKind]) {
-        self.signature = signature
+    init(parameterCount: Int, catches: [CatchKind]) {
         self.catches = catches
         let inputTagCount = catches.count {$0 == .Ref || $0 == .NoRef}
         let inputLabelCount = catches.count
-        super.init(numInputs: signature.parameterTypes.count + inputLabelCount + inputTagCount , numInnerOutputs: signature.parameterTypes.count + 1, attributes: [.isBlockStart, .propagatesSurroundingContext], requiredContext: [.wasmFunction])
+        super.init(numInputs: 1 + parameterCount + inputLabelCount + inputTagCount,
+            numInnerOutputs: parameterCount + 1,
+            attributes: [.isBlockStart, .propagatesSurroundingContext],
+            requiredContext: [.wasmFunction])
     }
+
+    var parameterCount: Int {numInnerOutputs - 1}
 }
 
 final class WasmEndTryTable: WasmOperation {
     override var opcode: Opcode { .wasmEndTryTable(self) }
-    let outputTypes: [ILType]
 
-    init(outputTypes: [ILType]) {
-        self.outputTypes = outputTypes
-        super.init(numInputs: outputTypes.count, numOutputs: outputTypes.count, attributes: [.isBlockEnd, .resumesSurroundingContext], requiredContext: [.wasmFunction])
+    init(outputCount: Int) {
+        super.init(numInputs: 1 + outputCount, numOutputs: outputCount,
+            attributes: [.isBlockEnd, .resumesSurroundingContext], requiredContext: [.wasmFunction])
     }
 }
 

@@ -846,16 +846,18 @@ public struct JSTyper: Analyzer {
             case .wasmEndLoop(_):
                 let signature = type(of: instr.input(0)).wasmFunctionSignatureDefSignature
                 wasmTypeEndBlock(instr, signature.outputTypes)
-            case .wasmBeginTryTable(let op):
-                wasmTypeBeginBlock(instr, op.signature)
+            case .wasmBeginTryTable(_):
+                let signature = type(of: instr.input(0)).wasmFunctionSignatureDefSignature
+                wasmTypeBeginBlock(instr, signature)
                 instr.inputs.forEach { input in
                     if type(of: input).isWasmTagType {
                         let definingInstruction = defUseAnalyzer.definition(of: input)
                         dynamicObjectGroupManager.addWasmTag(withType: type(of: input), forDefinition: definingInstruction, forVariable: input)
                     }
                 }
-            case .wasmEndTryTable(let op):
-                wasmTypeEndBlock(instr, op.outputTypes)
+            case .wasmEndTryTable(_):
+                let signature = type(of: instr.input(0)).wasmFunctionSignatureDefSignature
+                wasmTypeEndBlock(instr, signature.outputTypes)
             case .wasmBeginTry(_):
             let signature = type(of: instr.input(0)).wasmFunctionSignatureDefSignature
                 wasmTypeBeginBlock(instr, signature)

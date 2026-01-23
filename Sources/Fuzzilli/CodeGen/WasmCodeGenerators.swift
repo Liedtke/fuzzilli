@@ -1695,7 +1695,7 @@ public let WasmCodeGenerators: [CodeGenerator] = [
                         : (withExnRef ? .Ref : .NoRef)
                 }
 
-                var tryArgs = b.randomWasmBlockArguments(upTo: 5)
+                var tryArgs = b.randomWasmBlockArguments(upTo: 5, allowingGcTypes: true)
                 let tryParameters = tryArgs.map { b.type(of: $0) }
                 let tryOutputTypes = b.randomWasmBlockOutputTypes(upTo: 5)
                 tryArgs += zip(tags, labels).map { tag, label in

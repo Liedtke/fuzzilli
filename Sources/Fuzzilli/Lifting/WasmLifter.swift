@@ -1248,8 +1248,7 @@ public class WasmLifter {
             self.currentFunction!.labelBranchDepthMapping[instr.innerOutput(0)] = self.currentFunction!.variableAnalyzer.wasmBranchDepth - 1
             // Needs typer analysis
             return true
-        case .wasmBeginTryTable(let op):
-            registerSignature(op.signature)
+        case .wasmBeginTryTable(_):
             self.currentFunction!.labelBranchDepthMapping[instr.innerOutput(0)] = self.currentFunction!.variableAnalyzer.wasmBranchDepth
             // Needs typer analysis
             return true
@@ -1912,7 +1911,8 @@ public class WasmLifter {
             let signatureDesc = typer.getTypeDescription(of: wasmInstruction.input(0))
             return Data([0x03] + Leb128.unsignedEncode(typeDescToIndex[signatureDesc]!))
         case .wasmBeginTryTable(let op):
-            var inputIndex = op.signature.parameterTypes.count
+            let signatureDesc = typer.getTypeDescription(of: wasmInstruction.input(0))
+            var inputIndex = 1 + op.parameterCount
             let catchTable: Data = try op.catches.map {
                     switch $0 {
                     case .Ref, .NoRef:
@@ -1928,7 +1928,7 @@ public class WasmLifter {
                     }
                 }.reduce(Data(), +)
             return [0x1F]
-                + Leb128.unsignedEncode(signatureIndexMap[op.signature]!)
+                + Leb128.unsignedEncode(typeDescToIndex[signatureDesc]!)
                 + Leb128.unsignedEncode(op.catches.count)
                 + catchTable
         case .wasmBeginTry(_):

@@ -4067,9 +4067,13 @@ public class ProgramBuilder {
                     }
                 }
             #endif
-            let instr = b.emit(WasmBeginTryTable(with: signature, catches: catches), withInputs: args)
+            let signatureDef = b.wasmDefineAdHocSignatureType(signature: signature)
+            let instr = b.emit(
+                WasmBeginTryTable(parameterCount: signature.parameterTypes.count, catches: catches),
+                withInputs: [signatureDef] + args)
             let results = body(instr.innerOutput(0), Array(instr.innerOutputs(1...)))
-            return Array(b.emit(WasmEndTryTable(outputTypes: signature.outputTypes), withInputs: results).outputs)
+            return Array(b.emit(WasmEndTryTable(outputCount: signature.outputTypes.count),
+                withInputs: [signatureDef] + results).outputs)
         }
 
         // Create a legacy try-catch with a void block signature. Mostly a convenience helper for
@@ -4977,13 +4981,10 @@ public class ProgramBuilder {
             activeWasmModule!.functions.append(WasmFunction(forBuilder: self, withSignature: op.signature))
         case .wasmBeginTry(_),
              .wasmEndTryDelegate(_),
-             .wasmBeginTryDelegate(_):
-            break
-        case .wasmBeginTryTable(let op):
-            activeWasmModule!.blockSignatures.push(op.signature)
-        case .wasmEndTryTable(_):
-            activeWasmModule!.blockSignatures.pop()
-        case .wasmDefineAdHocModuleSignatureType(_):
+             .wasmBeginTryDelegate(_),
+             .wasmBeginTryTable(_),
+             .wasmEndTryTable(_),
+             .wasmDefineAdHocModuleSignatureType(_):
             break
 
         default:

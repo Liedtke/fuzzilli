@@ -1260,13 +1260,12 @@ enum WasmCatchKind {
 }
 
 message WasmBeginTryTable {
-  repeated WasmILType parameterTypes = 1;
-  repeated WasmILType outputTypes = 2;
-  repeated WasmCatchKind catches = 3;
+  int32 parameterCount = 1;
+  repeated WasmCatchKind catches = 2;
 }
 
 message WasmEndTryTable {
-  repeated WasmILType outputTypes = 1;
+  int32 outputCount = 1;
 }
 
 message WasmBeginTry {
