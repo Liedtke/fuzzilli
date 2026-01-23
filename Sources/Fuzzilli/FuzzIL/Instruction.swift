@@ -1427,12 +1427,11 @@ extension Instruction: ProtobufConvertible {
                 }
             case .wasmBeginTryDelegate(let op):
                 $0.wasmBeginTryDelegate = Fuzzilli_Protobuf_WasmBeginTryDelegate.with {
-                    $0.parameterTypes = op.signature.parameterTypes.map(ILTypeToWasmTypeEnum)
-                    $0.outputTypes = op.signature.outputTypes.map(ILTypeToWasmTypeEnum)
+                    $0.parameterCount = Int32(op.numInputs - 1)
                 }
             case .wasmEndTryDelegate(let op):
                 $0.wasmEndTryDelegate = Fuzzilli_Protobuf_WasmEndTryDelegate.with {
-                    $0.outputTypes = op.outputTypes.map(ILTypeToWasmTypeEnum)
+                    $0.outputCount = Int32(op.numOutputs)
                 }
             case .wasmThrow(_):
                 $0.wasmThrow = Fuzzilli_Protobuf_WasmThrow()
@@ -2478,11 +2477,9 @@ extension Instruction: ProtobufConvertible {
         case .wasmEndTry(let p):
             op = WasmEndTry(blockOutputCount: Int(p.blockOutputCount))
         case .wasmBeginTryDelegate(let p):
-            let parameters = p.parameterTypes.map(WasmTypeEnumToILType)
-            let outputs = p.outputTypes.map(WasmTypeEnumToILType)
-            op = WasmBeginTryDelegate(with: parameters => outputs)
+            op = WasmBeginTryDelegate(parameterCount: Int(p.parameterCount))
         case .wasmEndTryDelegate(let p):
-            op = WasmEndTryDelegate(outputTypes: p.outputTypes.map(WasmTypeEnumToILType))
+            op = WasmEndTryDelegate(outputCount: Int(p.outputCount))
         case .wasmThrow(_):
             op = WasmThrow(parameterCount: inouts.count - 1)
         case .wasmThrowRef(_):

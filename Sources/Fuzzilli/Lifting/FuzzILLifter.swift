@@ -1176,8 +1176,8 @@ public class FuzzILLifter: Lifter {
         case .wasmRethrow(_):
             w.emit("WasmRethrow \(instr.input(0))")
 
-        case .wasmBeginTryDelegate(let op):
-            w.emit("WasmBeginTryDelegate -> L:\(instr.innerOutput(0)) [\(liftCallArguments(instr.innerOutputs(1...)))] (\(op.signature))")
+        case .wasmBeginTryDelegate(_):
+            w.emit("WasmBeginTryDelegate -> L:\(instr.innerOutput(0)) [\(liftCallArguments(instr.innerOutputs(1...)))]")
             w.increaseIndentionLevel()
 
         case .wasmEndTryDelegate(_):

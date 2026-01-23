@@ -1445,11 +1445,13 @@ final class WasmEndTry: WasmOperation {
 /// A special try block that does not have any catch / catch_all handlers but ends with a delegate to handle the exception.
 final class WasmBeginTryDelegate: WasmOperation {
     override var opcode: Opcode { .wasmBeginTryDelegate(self) }
-    let signature: WasmSignature
 
-    init(with signature: WasmSignature) {
-        self.signature = signature
-        super.init(numInputs: signature.parameterTypes.count, numInnerOutputs: 1 + signature.parameterTypes.count, attributes: [.isBlockStart, .propagatesSurroundingContext], requiredContext: [.wasmFunction], contextOpened: [])
+    init(parameterCount: Int) {
+        // inputs: The signature and the arguments.
+        // innerOutputs: The label and the arguments.
+        super.init(numInputs: 1 + parameterCount, numInnerOutputs: 1 + parameterCount,
+            attributes: [.isBlockStart, .propagatesSurroundingContext],
+            requiredContext: [.wasmFunction])
     }
 }
 
@@ -1457,12 +1459,12 @@ final class WasmBeginTryDelegate: WasmOperation {
 /// This can be a "proper" try block (in which case its catch blocks apply) or any other block like a loop or an if.
 final class WasmEndTryDelegate: WasmOperation {
     override var opcode: Opcode { .wasmEndTryDelegate(self) }
-    let outputTypes: [ILType]
 
-    init(outputTypes: [ILType] = []) {
-        self.outputTypes = outputTypes
-        // Inputs: 1 label to delegate an exception to plus all the outputs of the try block.
-        super.init(numInputs: 1 + outputTypes.count, numOutputs: outputTypes.count, attributes: [.isBlockEnd, .resumesSurroundingContext], requiredContext: [.wasmFunction])
+    init(outputCount: Int) {
+        // Inputs: The signature, the label to delegate an exception to plus all the outputs of the
+        // try block.
+        super.init(numInputs: 2 + outputCount, numOutputs: outputCount,
+            attributes: [.isBlockEnd, .resumesSurroundingContext], requiredContext: [.wasmFunction])
     }
 }
 

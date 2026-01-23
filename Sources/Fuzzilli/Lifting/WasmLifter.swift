@@ -1257,8 +1257,7 @@ public class WasmLifter {
             self.currentFunction!.labelBranchDepthMapping[instr.innerOutput(0)] = self.currentFunction!.variableAnalyzer.wasmBranchDepth
             // Needs typer analysis
             return true
-        case .wasmBeginTryDelegate(let op):
-            registerSignature(op.signature)
+        case .wasmBeginTryDelegate(_):
             self.currentFunction!.labelBranchDepthMapping[instr.innerOutput(0)] = self.currentFunction!.variableAnalyzer.wasmBranchDepth
             // Needs typer analysis
             return true
@@ -1935,8 +1934,9 @@ public class WasmLifter {
         case .wasmBeginTry(_):
             let signatureDesc = typer.getTypeDescription(of: wasmInstruction.input(0))
             return Data([0x06] + Leb128.unsignedEncode(typeDescToIndex[signatureDesc]!))
-        case .wasmBeginTryDelegate(let op):
-            return Data([0x06] + Leb128.unsignedEncode(getSignatureIndexStrict(op.signature)))
+        case .wasmBeginTryDelegate(_):
+            let signatureDesc = typer.getTypeDescription(of: wasmInstruction.input(0))
+            return Data([0x06] + Leb128.unsignedEncode(typeDescToIndex[signatureDesc]!))
         case .wasmBeginCatchAll(_):
             return Data([0x19])
         case .wasmBeginCatch(_):
@@ -1949,7 +1949,7 @@ public class WasmLifter {
             // Basically the same as EndBlock, just an explicit instruction.
             return Data([0x0B])
         case .wasmEndTryDelegate(_):
-            let branchDepth = try branchDepthFor(label: wasmInstruction.input(0))
+            let branchDepth = try branchDepthFor(label: wasmInstruction.input(1))
             // Mutation might make this EndTryDelegate branch to itself, which should not happen.
             if branchDepth < 0 {
                 throw WasmLifter.CompileError.invalidBranch

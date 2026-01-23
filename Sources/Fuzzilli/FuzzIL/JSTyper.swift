@@ -894,10 +894,12 @@ public struct JSTyper: Analyzer {
             case .wasmEndTry(_):
                 let blockSignature = type(of: instr.input(0)).wasmFunctionSignatureDefSignature
                 wasmTypeEndBlock(instr, blockSignature.outputTypes)
-            case .wasmBeginTryDelegate(let op):
-                wasmTypeBeginBlock(instr, op.signature)
-            case .wasmEndTryDelegate(let op):
-                wasmTypeEndBlock(instr, op.outputTypes)
+            case .wasmBeginTryDelegate(_):
+                let blockSignature = type(of: instr.input(0)).wasmFunctionSignatureDefSignature
+                wasmTypeBeginBlock(instr, blockSignature)
+            case .wasmEndTryDelegate(_):
+                let blockSignature = type(of: instr.input(0)).wasmFunctionSignatureDefSignature
+                wasmTypeEndBlock(instr, blockSignature.outputTypes)
             case .wasmCallDirect(_):
                 let signature = type(of: instr.input(0)).wasmFunctionDefSignature!
                 for (output, outputType) in zip(instr.outputs, signature.outputTypes) {

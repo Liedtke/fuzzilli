@@ -1444,7 +1444,7 @@ public let WasmCodeGenerators: [CodeGenerator] = [
     ) { b, label in
         let function = b.currentWasmModule.currentWasmFunction
         // Choose a few random wasm values as arguments if available.
-        let args = b.randomWasmBlockArguments(upTo: 5)
+        let args = b.randomWasmBlockArguments(upTo: 5, allowingGcTypes: true)
         let outputTypes = b.randomWasmBlockOutputTypes(upTo: 3)
         let parameters = args.map(b.type)
         function.wasmBuildLegacyTryDelegateWithResult(

@@ -4153,18 +4153,24 @@ public class ProgramBuilder {
 
         public func wasmBuildLegacyTryDelegate(with signature: WasmSignature, args: [Variable], body: (Variable, [Variable]) -> Void, delegate: Variable) {
             assert(signature.outputTypes.isEmpty)
-            let instr = b.emit(WasmBeginTryDelegate(with: signature), withInputs: args, types: signature.parameterTypes)
+            let signatureDef = b.wasmDefineAdHocSignatureType(signature: signature)
+            let instr = b.emit(WasmBeginTryDelegate(parameterCount: signature.parameterTypes.count),
+                withInputs: [signatureDef] + args,
+                types: [.wasmTypeDef()] + signature.parameterTypes)
             body(instr.innerOutput(0), Array(instr.innerOutputs(1...)))
-            b.emit(WasmEndTryDelegate(), withInputs: [delegate])
+            b.emit(WasmEndTryDelegate(outputCount: 0), withInputs: [signatureDef, delegate])
         }
 
         @discardableResult
         public func wasmBuildLegacyTryDelegateWithResult(with signature: WasmSignature, args: [Variable], body: (Variable, [Variable]) -> [Variable], delegate: Variable) -> [Variable] {
-            let instr = b.emit(WasmBeginTryDelegate(with: signature), withInputs: args, types: signature.parameterTypes)
+            let signatureDef = b.wasmDefineAdHocSignatureType(signature: signature)
+            let instr = b.emit(WasmBeginTryDelegate(parameterCount: signature.parameterTypes.count),
+                withInputs: [signatureDef] + args,
+                types: [.wasmTypeDef()] + signature.parameterTypes)
             let results = body(instr.innerOutput(0), Array(instr.innerOutputs(1...)))
-            return Array(b.emit(WasmEndTryDelegate(outputTypes: signature.outputTypes),
-                withInputs: [delegate] + results,
-                types: [.anyLabel] + signature.outputTypes
+            return Array(b.emit(WasmEndTryDelegate(outputCount: signature.outputTypes.count),
+                withInputs: [signatureDef, delegate] + results,
+                types: [.wasmTypeDef(), .anyLabel] + signature.outputTypes
             ).outputs)
         }
 
@@ -4969,14 +4975,13 @@ public class ProgramBuilder {
             break
         case .beginWasmFunction(let op):
             activeWasmModule!.functions.append(WasmFunction(forBuilder: self, withSignature: op.signature))
-        case .wasmBeginTry(_):
+        case .wasmBeginTry(_),
+             .wasmEndTryDelegate(_),
+             .wasmBeginTryDelegate(_):
             break
-        case .wasmBeginTryDelegate(let op):
-            activeWasmModule!.blockSignatures.push(op.signature)
         case .wasmBeginTryTable(let op):
             activeWasmModule!.blockSignatures.push(op.signature)
-        case .wasmEndTryDelegate(_),
-             .wasmEndTryTable(_):
+        case .wasmEndTryTable(_):
             activeWasmModule!.blockSignatures.pop()
         case .wasmDefineAdHocModuleSignatureType(_):
             break
