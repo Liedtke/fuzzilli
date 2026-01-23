@@ -1438,10 +1438,8 @@ extension Instruction: ProtobufConvertible {
                 $0.wasmThrowRef = Fuzzilli_Protobuf_WasmThrowRef()
             case .wasmRethrow(_):
                 $0.wasmRethrow = Fuzzilli_Protobuf_WasmRethrow()
-            case .wasmDefineTag(let op):
-                $0.wasmDefineTag = Fuzzilli_Protobuf_WasmDefineTag.with {
-                    $0.parameterTypes = op.parameterTypes.map(ILTypeToWasmTypeEnum)
-                }
+            case .wasmDefineTag(_):
+                $0.wasmDefineTag = Fuzzilli_Protobuf_WasmDefineTag()
             case .wasmBranch(_):
                 $0.wasmBranch = Fuzzilli_Protobuf_WasmBranch()
             case .wasmBranchIf(let op):
@@ -2483,8 +2481,8 @@ extension Instruction: ProtobufConvertible {
             op = WasmThrowRef()
         case .wasmRethrow(_):
             op = WasmRethrow()
-        case .wasmDefineTag(let p):
-            op = WasmDefineTag(parameterTypes: p.parameterTypes.map(WasmTypeEnumToILType))
+        case .wasmDefineTag(_):
+            op = WasmDefineTag()
         case .wasmBranch(_):
             op = WasmBranch(parameterCount: inouts.count - 1)
         case .wasmBranchIf(let p):

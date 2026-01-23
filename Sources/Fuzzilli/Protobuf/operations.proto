@@ -1303,7 +1303,6 @@ message WasmRethrow {
 }
 
 message WasmDefineTag {
-  repeated WasmILType parameterTypes = 1;
 }
 
 message WasmBranch {

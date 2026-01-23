@@ -52,7 +52,7 @@ public let WasmCodeGenerators: [CodeGenerator] = [
         if probability(0.5) {
             b.createWasmJSTag()
         } else {
-            b.createWasmTag(parameterTypes: b.randomTagParameters())
+            b.createWasmTag(parameterTypes: b.randomTagParametersJs())
         }
     },
     //
@@ -1589,7 +1589,13 @@ public let WasmCodeGenerators: [CodeGenerator] = [
         "WasmDefineTagGenerator", inContext: .single(.wasm),
         produces: [.object(ofGroup: "WasmTag")]
     ) { b in
-        b.currentWasmModule.addTag(parameterTypes: b.randomTagParameters())
+        // TODO(mliedtke): If we allow non-nullable reference types in signatures, we'll also need
+        // to be able to provide valid values for them when trying to throw an instance of this tag.
+        let (signature, indexTypes) =
+            b.randomWasmGcSignature(withResults: false, allowNonNullable: false)
+        let signatureDef =
+            b.wasmDefineAdHocSignatureType(signature: signature, indexTypes: indexTypes)
+        b.currentWasmModule.addTag(signature: signatureDef)
     },
 
     CodeGenerator(

@@ -146,7 +146,7 @@ public let ProgramTemplates = [
 
         // A few tags (wasm exception kinds) to be used later on.
         let wasmTags = (0...Int.random(in: 0..<5)).map { _ in
-            b.createWasmTag(parameterTypes: b.randomTagParameters())
+            b.createWasmTag(parameterTypes: b.randomTagParametersJs())
         }
         let tags = [b.createWasmJSTag()] + wasmTags
         let tagToThrow = chooseUniform(from: wasmTags)

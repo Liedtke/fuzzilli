@@ -873,8 +873,8 @@ public class FuzzILLifter: Lifter {
         case .wasmDefineDataSegment(_):
             w.emit("\(output()) <- WasmDefineDataSegment [...]")
 
-        case .wasmDefineTag(let op):
-            w.emit("\(output()) <- WasmDefineTag \(op.parameterTypes)")
+        case .wasmDefineTag(_):
+            w.emit("\(output()) <- WasmDefineTag \(input(0))")
 
         case .wasmLoadGlobal(_):
             w.emit("\(output()) <- WasmLoadGlobal \(input(0))")

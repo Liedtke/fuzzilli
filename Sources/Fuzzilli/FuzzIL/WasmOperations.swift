@@ -877,11 +877,10 @@ final class WasmDefineDataSegment: WasmOperation {
 
 final class WasmDefineTag: WasmOperation {
     override var opcode: Opcode { .wasmDefineTag(self) }
-    public let parameterTypes: [ILType]
 
-    init(parameterTypes: [ILType]) {
-        self.parameterTypes = parameterTypes
-        super.init(numOutputs: 1, attributes: [], requiredContext: [.wasm])
+    init() {
+        // Inputs: The signature.
+        super.init(numInputs: 1, numOutputs: 1, attributes: [], requiredContext: [.wasm])
     }
 }
 

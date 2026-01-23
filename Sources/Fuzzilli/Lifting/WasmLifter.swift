@@ -622,12 +622,6 @@ public class WasmLifter {
             registerSignature(signature)
         }
 
-        // Special handling for defined Tags
-        for case let .tag(instr) in self.exports {
-            let tagSignature = (instr!.op as! WasmDefineTag).parameterTypes => []
-            assert(tagSignature.outputTypes.isEmpty)
-            registerSignature(tagSignature)
-        }
         // Special handling for defined functions
         for case let .function(functionInfo) in self.exports {
             registerSignature(functionInfo!.signature)
@@ -1142,9 +1136,9 @@ public class WasmLifter {
         section += Leb128.unsignedEncode(self.exports.count { $0.isTag })
 
         for case let .tag(instr) in self.exports {
-            let tagSignature = (instr!.op as! WasmDefineTag).parameterTypes => []
+            let signatureDesc = typer.getTypeDescription(of: instr!.input(0))
             section.append(0)
-            section.append(Leb128.unsignedEncode(try getSignatureIndex(tagSignature)))
+            section.append(Leb128.unsignedEncode(typeDescToIndex[signatureDesc]!))
         }
 
         self.bytecode.append(Leb128.unsignedEncode(section.count))

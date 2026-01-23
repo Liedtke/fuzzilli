@@ -4535,8 +4535,15 @@ public class ProgramBuilder {
         }
 
         @discardableResult
+        public func addTag(signature: Variable) -> Variable {
+            return b.emit(WasmDefineTag(), withInputs: [signature]).output
+        }
+
+        // Convenience function to create a tag including an adhoc signature definition.
+        @discardableResult
         public func addTag(parameterTypes: [ILType]) -> Variable {
-            return b.emit(WasmDefineTag(parameterTypes: parameterTypes)).output
+            let signatureDef = b.wasmDefineAdHocSignatureType(signature: parameterTypes => [])
+            return addTag(signature: signatureDef)
         }
 
         private func getModuleVariable() -> Variable {
@@ -4616,7 +4623,8 @@ public class ProgramBuilder {
         }
     }
 
-    public func randomTagParameters() -> [ILType] {
+    // Random tag parameters for Wasm tags defined via the JS API
+    public func randomTagParametersJs() -> [ILType] {
         // TODO(mliedtke): The list of types should be shared with function signature generation
         // etc. We should also support non-nullable references but that requires being able
         // to generate valid ones which currently isn't the case for most of them.
@@ -4646,16 +4654,17 @@ public class ProgramBuilder {
         return params => returnTypes
     }
 
-    public func randomWasmGcSignature() -> (signature: WasmSignature, indexTypes: [Variable]) {
+    public func randomWasmGcSignature(withResults: Bool = true, allowNonNullable: Bool = true)
+            -> (signature: WasmSignature, indexTypes: [Variable]) {
         let typeCount = Int.random(in: 0...10)
-        let returnCount = Int.random(in: 0...typeCount)
+        let returnCount = withResults ? Int.random(in: 0...typeCount) : 0
         let parameterCount = typeCount - returnCount
 
         var indexTypes: [Variable] = []
         let chooseType = {
             if let elementType = self.randomVariable(ofType: .wasmTypeDef()), probability(0.25) {
-                let nullability =
-                    self.type(of: elementType).wasmTypeDefinition!.description == .selfReference
+                let nullability = !allowNonNullable
+                    || self.type(of: elementType).wasmTypeDefinition!.description == .selfReference
                     || probability(0.5)
                 indexTypes.append(elementType)
                 return ILType.wasmRef(.Index(), nullability: nullability)

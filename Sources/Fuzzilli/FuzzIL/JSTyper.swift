@@ -754,8 +754,9 @@ public struct JSTyper: Analyzer {
                 setType(of: instr.output, to: .wasmDataSegment(segmentLength: op.segment.count))
             case .wasmDropDataSegment(_):
                 type(of: instr.input(0)).wasmDataSegmentType!.markAsDropped()
-            case .wasmDefineTag(let op):
-                setType(of: instr.output, to: .object(ofGroup: "WasmTag", withWasmType: WasmTagType(op.parameterTypes)))
+            case .wasmDefineTag(_):
+                let signature = type(of: instr.input(0)).wasmFunctionSignatureDefSignature
+                setType(of: instr.output, to: .object(ofGroup: "WasmTag", withWasmType: WasmTagType(signature.parameterTypes)))
                 dynamicObjectGroupManager.addWasmTag(withType: type(of: instr.output), forDefinition: instr, forVariable: instr.output)
             case .wasmThrow(_):
                 let definingInstruction = defUseAnalyzer.definition(of: instr.input(0))
