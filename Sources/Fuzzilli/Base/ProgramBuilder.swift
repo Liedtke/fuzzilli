@@ -4072,49 +4072,70 @@ public class ProgramBuilder {
             return Array(b.emit(WasmEndTryTable(outputTypes: signature.outputTypes), withInputs: results).outputs)
         }
 
-        public func wasmBuildLegacyTry(with signature: WasmSignature, args: [Variable], body: (Variable, [Variable]) -> Void, catchAllBody: ((Variable) -> Void)? = nil) {
-            let instr = b.emit(WasmBeginTry(with: signature), withInputs: args, types: signature.parameterTypes)
-            body(instr.innerOutput(0), Array(instr.innerOutputs(1...)))
-            if let catchAllBody = catchAllBody {
-                let instr = b.emit(WasmBeginCatchAll(inputTypes: signature.outputTypes))
+        // Create a legacy try-catch with a void block signature. Mostly a convenience helper for
+        // test cases.
+        public func wasmBuildLegacyTryVoid(
+                body: (Variable) -> Void,
+                catchClauses: [(tag: Variable, body: (Variable, Variable, [Variable]) -> Void)] = [],
+                catchAllBody: ((Variable) -> Void)? = nil) {
+            let signature = [] => []
+            let signatureDef = b.wasmDefineAdHocSignatureType(signature: signature)
+            let instr = b.emit(WasmBeginTry(
+                parameterCount: 0), withInputs: [signatureDef], types: [.wasmTypeDef()])
+            assert(instr.innerOutputs.count == 1)
+            body(instr.innerOutput(0))
+            for (tag, generator) in catchClauses {
+                b.reportErrorIf(!b.type(of: tag).isWasmTagType,
+                    "Expected tag misses the WasmTagType extension for variable \(tag), typed \(b.type(of: tag)).")
+                let instr = b.emit(WasmBeginCatch(
+                        blockOutputCount: signature.outputTypes.count,
+                        labelParameterCount:  b.type(of: tag).wasmTagType!.parameters.count),
+                    withInputs: [signatureDef, tag],
+                    types: [.wasmTypeDef(), .object(ofGroup: "WasmTag")] + signature.outputTypes)
+                generator(instr.innerOutput(0), instr.innerOutput(1), Array(instr.innerOutputs(2...)))
+            }
+            if let catchAllBody {
+                let instr = b.emit(WasmBeginCatchAll(blockOutputCount: 0), withInputs: [signatureDef])
                 catchAllBody(instr.innerOutput(0))
             }
-            b.emit(WasmEndTry())
+            b.emit(WasmEndTry(blockOutputCount: 0), withInputs: [signatureDef])
         }
 
         // The catchClauses expect a list of (tag, block-generator lambda).
         // The lambda's inputs are the block label, the exception label (for rethrowing) and the
         // tag arguments.
         @discardableResult
-        public func wasmBuildLegacyTryWithResult(with signature: WasmSignature, args: [Variable],
+        public func wasmBuildLegacyTryWithResult(
+                signature: WasmSignature,
+                signatureDef: Variable,
+                args: [Variable],
                 body: (Variable, [Variable]) -> [Variable],
-                catchClauses: [(tag: Variable, body: (Variable, Variable, [Variable]) -> [Variable])],
+                catchClauses: [(tag: Variable, body: (Variable, Variable, [Variable]) -> [Variable])] = [],
                 catchAllBody: ((Variable) -> [Variable])? = nil) -> [Variable] {
-            let instr = b.emit(WasmBeginTry(with: signature), withInputs: args, types: signature.parameterTypes)
+            let parameterCount = signature.parameterTypes.count
+            let instr = b.emit(WasmBeginTry(parameterCount: parameterCount),
+                withInputs: [signatureDef] + args,
+                types: [.wasmTypeDef()] + signature.parameterTypes)
             var result = body(instr.innerOutput(0), Array(instr.innerOutputs(1...)))
             for (tag, generator) in catchClauses {
                 b.reportErrorIf(!b.type(of: tag).isWasmTagType,
                     "Expected tag misses the WasmTagType extension for variable \(tag), typed \(b.type(of: tag)).")
-                let instr = b.emit(WasmBeginCatch(with: b.type(of: tag).wasmTagType!.parameters => signature.outputTypes),
-                    withInputs: [tag] + result,
-                    types: [.object(ofGroup: "WasmTag")] + signature.outputTypes)
+                let instr = b.emit(WasmBeginCatch(
+                        blockOutputCount: signature.outputTypes.count,
+                        labelParameterCount:  b.type(of: tag).wasmTagType!.parameters.count),
+                    withInputs: [signatureDef, tag] + result,
+                    types: [.wasmTypeDef(), .object(ofGroup: "WasmTag")] + signature.outputTypes)
                 result = generator(instr.innerOutput(0), instr.innerOutput(1), Array(instr.innerOutputs(2...)))
             }
             if let catchAllBody = catchAllBody {
-                let instr = b.emit(WasmBeginCatchAll(inputTypes: signature.outputTypes), withInputs: result, types: signature.outputTypes)
+                let instr = b.emit(WasmBeginCatchAll(blockOutputCount: signature.outputTypes.count),
+                    withInputs: [signatureDef] + result,
+                    types: [.wasmTypeDef()] + signature.outputTypes)
                 result = catchAllBody(instr.innerOutput(0))
             }
-            return Array(b.emit(WasmEndTry(outputTypes: signature.outputTypes), withInputs: result, types: signature.outputTypes).outputs)
-        }
-
-        // Build a legacy catch block without a result type. Note that this may only be placed into
-        // try blocks that also don't have a result type. (Use wasmBuildLegacyTryWithResult to
-        // create a catch block with a result value.)
-        public func WasmBuildLegacyCatch(tag: Variable, body: ((Variable, Variable, [Variable]) -> Void)) {
-            b.reportErrorIf(!b.type(of: tag).isWasmTagType,
-                "Expected tag misses the WasmTagType extension for variable \(tag), typed \(b.type(of: tag)).")
-            let instr = b.emit(WasmBeginCatch(with: b.type(of: tag).wasmTagType!.parameters => []), withInputs: [tag], types: [.object(ofGroup: "WasmTag")])
-            body(instr.innerOutput(0), instr.innerOutput(1), Array(instr.innerOutputs(2...)))
+            return Array(b.emit(WasmEndTry(blockOutputCount: signature.outputTypes.count),
+                withInputs: [signatureDef] + result,
+                types: [.wasmTypeDef()] + signature.outputTypes).outputs)
         }
 
         public func WasmBuildThrow(tag: Variable, inputs: [Variable]) {
@@ -4948,14 +4969,13 @@ public class ProgramBuilder {
             break
         case .beginWasmFunction(let op):
             activeWasmModule!.functions.append(WasmFunction(forBuilder: self, withSignature: op.signature))
-        case .wasmBeginTry(let op):
-            activeWasmModule!.blockSignatures.push(op.signature)
+        case .wasmBeginTry(_):
+            break
         case .wasmBeginTryDelegate(let op):
             activeWasmModule!.blockSignatures.push(op.signature)
         case .wasmBeginTryTable(let op):
             activeWasmModule!.blockSignatures.push(op.signature)
-        case .wasmEndTry(_),
-             .wasmEndTryDelegate(_),
+        case .wasmEndTryDelegate(_),
              .wasmEndTryTable(_):
             activeWasmModule!.blockSignatures.pop()
         case .wasmDefineAdHocModuleSignatureType(_):

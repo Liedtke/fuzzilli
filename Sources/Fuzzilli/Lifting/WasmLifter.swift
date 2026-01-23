@@ -1253,8 +1253,7 @@ public class WasmLifter {
             self.currentFunction!.labelBranchDepthMapping[instr.innerOutput(0)] = self.currentFunction!.variableAnalyzer.wasmBranchDepth
             // Needs typer analysis
             return true
-        case .wasmBeginTry(let op):
-            registerSignature(op.signature)
+        case .wasmBeginTry(_):
             self.currentFunction!.labelBranchDepthMapping[instr.innerOutput(0)] = self.currentFunction!.variableAnalyzer.wasmBranchDepth
             // Needs typer analysis
             return true
@@ -1933,14 +1932,15 @@ public class WasmLifter {
                 + Leb128.unsignedEncode(signatureIndexMap[op.signature]!)
                 + Leb128.unsignedEncode(op.catches.count)
                 + catchTable
-        case .wasmBeginTry(let op):
-            return Data([0x06] + Leb128.unsignedEncode(getSignatureIndexStrict(op.signature)))
+        case .wasmBeginTry(_):
+            let signatureDesc = typer.getTypeDescription(of: wasmInstruction.input(0))
+            return Data([0x06] + Leb128.unsignedEncode(typeDescToIndex[signatureDesc]!))
         case .wasmBeginTryDelegate(let op):
             return Data([0x06] + Leb128.unsignedEncode(getSignatureIndexStrict(op.signature)))
         case .wasmBeginCatchAll(_):
             return Data([0x19])
         case .wasmBeginCatch(_):
-            return Data([0x07] + Leb128.unsignedEncode(try resolveIdx(ofType: .tag, for: wasmInstruction.input(0))))
+            return Data([0x07] + Leb128.unsignedEncode(try resolveIdx(ofType: .tag, for: wasmInstruction.input(1))))
         case .wasmEndLoop(_),
                 .wasmEndIf(_),
                 .wasmEndTryTable(_),

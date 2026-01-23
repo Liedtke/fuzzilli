@@ -1375,23 +1375,24 @@ final class WasmEndTryTable: WasmOperation {
 
 final class WasmBeginTry: WasmOperation {
     override var opcode: Opcode { .wasmBeginTry(self) }
-    let signature: WasmSignature
 
-    init(with signature: WasmSignature) {
-        self.signature = signature
-        super.init(numInputs: signature.parameterTypes.count, numInnerOutputs: signature.parameterTypes.count + 1, attributes: [.isBlockStart, .propagatesSurroundingContext], requiredContext: [.wasmFunction])
+    init(parameterCount: Int) {
+        // Inputs: The block signature and the block arguments.
+        // Inner outputs: The label and the block parameters.
+        super.init(numInputs: 1 + parameterCount,
+            numInnerOutputs: 1 + parameterCount,
+            attributes: [.isBlockStart, .propagatesSurroundingContext],
+            requiredContext: [.wasmFunction])
     }
 }
 
 final class WasmBeginCatchAll : WasmOperation {
     override var opcode: Opcode { .wasmBeginCatchAll(self) }
-    let inputTypes: [ILType]
 
-    init(inputTypes: [ILType]) {
-        self.inputTypes = inputTypes
-
+    init(blockOutputCount: Int) {
+        // Inputs: The block signature and the outputs of the preceding try or catch block.
         super.init(
-            numInputs: inputTypes.count,
+            numInputs: 1 + blockOutputCount,
             numInnerOutputs: 1, // the label
             attributes: [
                 .isBlockEnd,
@@ -1406,10 +1407,8 @@ final class WasmBeginCatchAll : WasmOperation {
 
 final class WasmBeginCatch : WasmOperation {
     override var opcode: Opcode { .wasmBeginCatch(self) }
-    let signature: WasmSignature
 
-    init(with signature: WasmSignature) {
-        self.signature = signature
+    init(blockOutputCount: Int, labelParameterCount: Int) {
         // TODO: In an ideal world, the catch would only have one label that is used both for
         // branching as well as for rethrowing the exception. However, rethrows may only use labels
         // from catch blocks and branches may use any label but need to be very precise on the type
@@ -1417,9 +1416,11 @@ final class WasmBeginCatch : WasmOperation {
         // the usage. For now, we just emit a label for branching and the ".exceptionLabel" for
         // rethrows.
         super.init(
-            numInputs: 1 + signature.outputTypes.count,
+            // Inputs: The block signature, the tag and the outputs of the preceding try or catch
+            // (all) block.
+            numInputs: 2 + blockOutputCount,
             // Inner outputs are the branch label, the exception label and the tag parameters.
-            numInnerOutputs: 2 + signature.parameterTypes.count,
+            numInnerOutputs: 2 + labelParameterCount,
             attributes: [
                 .isBlockEnd,
                 .isBlockStart,
@@ -1427,15 +1428,17 @@ final class WasmBeginCatch : WasmOperation {
             ],
             requiredContext: [.wasmFunction])
     }
+
+    var blockOutputCount: Int {numInputs - 2}
+    var labelParameterCount: Int {numInnerOutputs - 2}
 }
 
 final class WasmEndTry: WasmOperation {
     override var opcode: Opcode { .wasmEndTry(self) }
-    let outputTypes: [ILType]
 
-    init(outputTypes: [ILType] = []) {
-        self.outputTypes = outputTypes
-        super.init(numInputs: outputTypes.count, numOutputs: outputTypes.count, attributes: [.isBlockEnd], requiredContext: [.wasmFunction])
+    init(blockOutputCount: Int) {
+        super.init(numInputs: 1 + blockOutputCount, numOutputs: blockOutputCount,
+            attributes: [.isBlockEnd], requiredContext: [.wasmFunction])
     }
 }
 

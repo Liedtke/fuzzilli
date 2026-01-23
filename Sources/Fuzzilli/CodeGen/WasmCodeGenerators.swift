@@ -1404,46 +1404,21 @@ public let WasmCodeGenerators: [CodeGenerator] = [
         },
     ]),
 
-    // TODO Turn this into a multi-part Generator
-    CodeGenerator("WasmLegacyTryCatchGenerator", inContext: .single(.wasmFunction)) {
-        b in
-        let function = b.currentWasmModule.currentWasmFunction
-        // Choose a few random wasm values as arguments if available.
-        let args = b.randomWasmBlockArguments(upTo: 5)
-        let parameters = args.map(b.type)
-        let tags = (0..<Int.random(in: 0...5)).map { _ in
-            b.findVariable { b.type(of: $0).isWasmTagType }
-        }.filter { $0 != nil }.map { $0! }
-        let recursiveCallCount = 2 + tags.count
-        function.wasmBuildLegacyTry(with: parameters => [], args: args) {
-            label, args in
-            b.buildRecursive(n: 4)
-            for (i, tag) in tags.enumerated() {
-                function.WasmBuildLegacyCatch(tag: tag) { _, _, _ in
-                    b.buildRecursive(n: 4)
-                }
-            }
-        } catchAllBody: { label in
-            b.buildRecursive(n: 4)
-        }
-    },
-
     // TODO split this into a multi-part Generator.
-    CodeGenerator(
-        "WasmLegacyTryCatchWithResultGenerator", inContext: .single(.wasmFunction)
-    ) { b in
+    CodeGenerator("WasmLegacyTryCatchGenerator", inContext: .single(.wasmFunction)) { b in
         let function = b.currentWasmModule.currentWasmFunction
         // Choose a few random wasm values as arguments if available.
-        let args = b.randomWasmBlockArguments(upTo: 5)
+        let args = b.randomWasmBlockArguments(upTo: 5, allowingGcTypes: true)
         let parameters = args.map(b.type)
         let tags = (0..<Int.random(in: 0...5)).map { _ in
             b.findVariable { b.type(of: $0).isWasmTagType }
         }.filter { $0 != nil }.map { $0! }
         let outputTypes = b.randomWasmBlockOutputTypes(upTo: 3)
         let signature = parameters => outputTypes
+        let signatureDef = b.wasmDefineAdHocSignatureType(signature: signature)
         let recursiveCallCount = 2 + tags.count
         function.wasmBuildLegacyTryWithResult(
-            with: signature, args: args,
+            signature: signature, signatureDef: signatureDef, args: args,
             body: { label, args in
                 b.buildRecursive(n: 4)
                 return outputTypes.map(function.findOrGenerateWasmVar)

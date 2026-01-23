@@ -1139,9 +1139,9 @@ public class FuzzILLifter: Lifter {
                 w.emit("WasmEndTryTable \(inputs)")
             }
 
-        case .wasmBeginTry(let op):
+        case .wasmBeginTry(_):
             let inputs = instr.inputs.map(lift).joined(separator: ", ")
-            w.emit("WasmBeginTry (\(op.signature)) [\(inputs)] -> L:\(instr.innerOutput(0)) [\(liftCallArguments(instr.innerOutputs(1...)))]")
+            w.emit("WasmBeginTry [\(inputs)] -> L:\(instr.innerOutput(0)) [\(liftCallArguments(instr.innerOutputs(1...)))]")
             w.increaseIndentionLevel()
 
         case .wasmBeginCatchAll(_):

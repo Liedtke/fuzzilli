@@ -1410,21 +1410,20 @@ extension Instruction: ProtobufConvertible {
                 }
             case .wasmBeginTry(let op):
                 $0.wasmBeginTry = Fuzzilli_Protobuf_WasmBeginTry.with {
-                    $0.parameterTypes = op.signature.parameterTypes.map(ILTypeToWasmTypeEnum)
-                    $0.outputTypes = op.signature.outputTypes.map(ILTypeToWasmTypeEnum)
+                    $0.parameterCount = Int32(op.numInputs - 1)
                 }
             case .wasmBeginCatchAll(let op):
                 $0.wasmBeginCatchAll = Fuzzilli_Protobuf_WasmBeginCatchAll.with {
-                    $0.inputTypes = op.inputTypes.map(ILTypeToWasmTypeEnum)
+                    $0.blockOutputCount = Int32(op.numInputs - 1)
                 }
             case .wasmBeginCatch(let op):
                 $0.wasmBeginCatch = Fuzzilli_Protobuf_WasmBeginCatch.with {
-                    $0.parameterTypes = op.signature.parameterTypes.map(ILTypeToWasmTypeEnum)
-                    $0.outputTypes = op.signature.outputTypes.map(ILTypeToWasmTypeEnum)
+                    $0.blockOutputCount = Int32(op.blockOutputCount)
+                    $0.labelParameterCount = Int32(op.labelParameterCount)
                 }
             case .wasmEndTry(let op):
                 $0.wasmEndTry = Fuzzilli_Protobuf_WasmEndTry.with {
-                    $0.outputTypes = op.outputTypes.map(ILTypeToWasmTypeEnum)
+                    $0.blockOutputCount = Int32(op.numOutputs)
                 }
             case .wasmBeginTryDelegate(let op):
                 $0.wasmBeginTryDelegate = Fuzzilli_Protobuf_WasmBeginTryDelegate.with {
@@ -2470,17 +2469,14 @@ extension Instruction: ProtobufConvertible {
         case .wasmEndTryTable(let p):
             op = WasmEndTryTable(outputTypes: p.outputTypes.map(WasmTypeEnumToILType))
         case .wasmBeginTry(let p):
-            let parameters = p.parameterTypes.map(WasmTypeEnumToILType)
-            let outputs = p.outputTypes.map(WasmTypeEnumToILType)
-            op = WasmBeginTry(with: parameters => outputs)
+            op = WasmBeginTry(parameterCount: Int(p.parameterCount))
         case .wasmBeginCatchAll(let p):
-            op = WasmBeginCatchAll(inputTypes: p.inputTypes.map(WasmTypeEnumToILType))
+            op = WasmBeginCatchAll(blockOutputCount: Int(p.blockOutputCount))
         case .wasmBeginCatch(let p):
-            let parameters = p.parameterTypes.map(WasmTypeEnumToILType)
-            let outputs = p.outputTypes.map(WasmTypeEnumToILType)
-            op = WasmBeginCatch(with: parameters => outputs)
+            op = WasmBeginCatch(blockOutputCount: Int(p.blockOutputCount),
+                                labelParameterCount: Int(p.labelParameterCount))
         case .wasmEndTry(let p):
-            op = WasmEndTry(outputTypes: p.outputTypes.map(WasmTypeEnumToILType))
+            op = WasmEndTry(blockOutputCount: Int(p.blockOutputCount))
         case .wasmBeginTryDelegate(let p):
             let parameters = p.parameterTypes.map(WasmTypeEnumToILType)
             let outputs = p.outputTypes.map(WasmTypeEnumToILType)

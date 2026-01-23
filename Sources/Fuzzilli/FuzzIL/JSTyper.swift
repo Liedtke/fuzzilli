@@ -856,24 +856,44 @@ public struct JSTyper: Analyzer {
                 }
             case .wasmEndTryTable(let op):
                 wasmTypeEndBlock(instr, op.outputTypes)
-            case .wasmBeginTry(let op):
-                wasmTypeBeginBlock(instr, op.signature)
-            case .wasmBeginCatchAll(let op):
-                setType(of: instr.innerOutputs.first!, to: .label(op.inputTypes))
-            case .wasmBeginCatch(let op):
-                let tagType = ILType.label(op.signature.outputTypes)
-                setType(of: instr.innerOutput(0), to: tagType)
-                let definingInstruction = defUseAnalyzer.definition(of: instr.input(0))
-                dynamicObjectGroupManager.addWasmTag(withType: type(of: instr.input(0)), forDefinition: definingInstruction, forVariable: instr.input(0))
+            case .wasmBeginTry(_):
+            let signature = type(of: instr.input(0)).wasmFunctionSignatureDefSignature
+                wasmTypeBeginBlock(instr, signature)
+            case .wasmBeginCatchAll(_):
+                let signature = type(of: instr.input(0)).wasmFunctionSignatureDefSignature
+                setType(of: instr.innerOutputs.first!, to: .label(signature.outputTypes))
+            case .wasmBeginCatch(_):
+                let blockSignature = type(of: instr.input(0)).wasmFunctionSignatureDefSignature
+                // Type the label (used for branch instructions).
+                setType(of: instr.innerOutput(0), to: .label(blockSignature.outputTypes))
+                // Register the tag (Wasm exception) in the dynamicObjectGroupManager as being used
+                // by this Wasm module.
+                let tag = instr.input(1)
+                let definingInstruction = defUseAnalyzer.definition(of: tag)
+                dynamicObjectGroupManager.addWasmTag(withType: type(of: tag),
+                    forDefinition: definingInstruction, forVariable: tag)
+                // The second inner output is the exception label which is used for rethrowing the
+                // exception with the legacy exception handling proposal. (This is similar to the
+                // exnref in the standard exception handling spec.)
                 setType(of: instr.innerOutput(1), to: .exceptionLabel)
-                for (innerOutput, paramType) in zip(instr.innerOutputs.dropFirst(2), op.signature.parameterTypes) {
+                // Type the tag parameters.
+                guard let labelParameters = type(of: instr.input(1)).wasmTagType?.parameters else {
+                    // TODO(mliedtke): I believe that sooner or later we will run into this fatal
+                    // error. A tag can be defined in JavaScript and then be used in Wasm. Later on
+                    // the varaible defining the tag can be reassigned to with a different type,
+                    // loosening the inferred type information suddenly not being a tag any more.
+                    fatalError("Input into WasmBeginCatch not a tag type, actual "
+                        + "\(type(of: instr.input(1))), defined in \(definingInstruction)")
+                }
+                for (innerOutput, paramType) in zip(instr.innerOutputs.dropFirst(2), labelParameters) {
                     setType(of: innerOutput, to: paramType)
                 }
-                for (output, outputType) in zip(instr.outputs, op.signature.outputTypes) {
+                for (output, outputType) in zip(instr.outputs, blockSignature.outputTypes) {
                     setType(of: output, to: outputType)
                 }
-            case .wasmEndTry(let op):
-                wasmTypeEndBlock(instr, op.outputTypes)
+            case .wasmEndTry(_):
+                let blockSignature = type(of: instr.input(0)).wasmFunctionSignatureDefSignature
+                wasmTypeEndBlock(instr, blockSignature.outputTypes)
             case .wasmBeginTryDelegate(let op):
                 wasmTypeBeginBlock(instr, op.signature)
             case .wasmEndTryDelegate(let op):

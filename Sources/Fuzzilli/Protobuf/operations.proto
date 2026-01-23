@@ -1270,21 +1270,20 @@ message WasmEndTryTable {
 }
 
 message WasmBeginTry {
-  repeated WasmILType parameterTypes = 1;
-  repeated WasmILType outputTypes = 2;
+    int32 parameterCount = 1;
 }
 
 message WasmBeginCatchAll {
-  repeated WasmILType inputTypes = 1;
+    int32 blockOutputCount = 1;
 }
 
 message WasmBeginCatch {
-  repeated WasmILType parameterTypes = 1;
-  repeated WasmILType outputTypes = 2;
+    int32 blockOutputCount = 1;
+    int32 labelParameterCount = 2;
 }
 
 message WasmEndTry {
-  repeated WasmILType outputTypes = 1;
+    int32 blockOutputCount = 1;
 }
 
 message WasmBeginTryDelegate {

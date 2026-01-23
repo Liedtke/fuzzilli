@@ -1550,8 +1550,9 @@ class MinimizerTests: XCTestCase {
         try runWasmMinimization { evaluator, b in
             return b.buildWasmModule { wasmModule in
                 wasmModule.addWasmFunction(with: [] => [.wasmi64]) { function, _, _ in
-                    evaluator.nextInstructionIsImportant(in: b)
-                    function.wasmBuildLegacyTry(with: [] => [], args: []) { label, _ in
+                    // Mark the try instruction as important (the next instruction is the signature).
+                    evaluator.instructionNIsImportant(in: b, n: 2)
+                    function.wasmBuildLegacyTryVoid { label in
                         let val = function.consti64(42)
                         evaluator.nextInstructionIsImportant(in: b)
                         function.wasmReturn(val)
@@ -1565,7 +1566,7 @@ class MinimizerTests: XCTestCase {
         } minified: { b in
             return b.buildWasmModule { wasmModule in
                 wasmModule.addWasmFunction(with: [] => [.wasmi64]) { function, _, _ in
-                    function.wasmBuildLegacyTry(with: [] => [], args: []) { label, _ in
+                    function.wasmBuildLegacyTryVoid { label in
                         function.wasmReturn(function.consti64(42))
                     }
                     return [function.consti32(-1)]
@@ -1582,18 +1583,18 @@ class MinimizerTests: XCTestCase {
                 let irrelevantTag = wasmModule.addTag(parameterTypes: [])
                 wasmModule.addWasmFunction(with: [] => [.wasmi64]) { function, _, _ in
                     evaluator.nextInstructionIsImportant(in: b)
-                    function.wasmBuildLegacyTry(with: [] => [], args: []) { label, _ in
-                        evaluator.nextInstructionIsImportant(in: b)
-                        function.WasmBuildThrow(tag: tag, inputs: [])
-                        evaluator.nextInstructionIsImportant(in: b)
-                        function.WasmBuildLegacyCatch(tag: tag) { label, exception, args in
-                            let val = function.consti64(42)
+                    function.wasmBuildLegacyTryVoid(body: { label in
                             evaluator.nextInstructionIsImportant(in: b)
-                            function.wasmReturn(val)
-                        }
-                        function.WasmBuildLegacyCatch(tag: irrelevantTag) { label, exception, args in
-                        }
-                    }
+                            function.WasmBuildThrow(tag: tag, inputs: [])
+                            // Mark teh first catch as important.
+                            evaluator.nextInstructionIsImportant(in: b)
+                        }, catchClauses: [
+                            (tag: tag, body: { _, _, _ in
+                                let val = function.consti64(42)
+                                evaluator.nextInstructionIsImportant(in: b)
+                                function.wasmReturn(val)
+                            }),
+                            (tag: irrelevantTag, body: { _, _, _ in })])
                     return [function.consti32(-1)]
                 }
             }
@@ -1602,12 +1603,12 @@ class MinimizerTests: XCTestCase {
             return b.buildWasmModule { wasmModule in
                 let tag = wasmModule.addTag(parameterTypes: [])
                 wasmModule.addWasmFunction(with: [] => [.wasmi64]) { function, _, _ in
-                    function.wasmBuildLegacyTry(with: [] => [], args: []) { label, _ in
-                        function.WasmBuildThrow(tag: tag, inputs: [])
-                        function.WasmBuildLegacyCatch(tag: tag) { label, exception, args in
+                    function.wasmBuildLegacyTryVoid(
+                        body: { label in
+                            function.WasmBuildThrow(tag: tag, inputs: [])
+                        }, catchClauses: [(tag: tag, body: { _, _, _ in
                             function.wasmReturn(function.consti64(42))
-                        }
-                    }
+                        })])
                     return [function.consti32(-1)]
                 }
             }
@@ -1620,14 +1621,11 @@ class MinimizerTests: XCTestCase {
             return b.buildWasmModule { wasmModule in
                 let tag = wasmModule.addTag(parameterTypes: [])
                 wasmModule.addWasmFunction(with: [] => [.wasmi64]) { function, _, _ in
-                    function.wasmBuildLegacyTry(with: [] => [], args: []) { label, _ in
-                        let val = function.consti64(42)
-                            evaluator.nextInstructionIsImportant(in: b)
-                            function.wasmReturn(val)
-                        function.WasmBuildLegacyCatch(tag: tag) { label, exception, args in
-                            function.wasmUnreachable()
-                        }
-                    }
+                    function.wasmBuildLegacyTryVoid(body: { label in
+                            let val = function.consti64(42)
+                                evaluator.nextInstructionIsImportant(in: b)
+                                function.wasmReturn(val)
+                        }, catchClauses: [(tag: tag, body: { _, _, _ in function.wasmUnreachable() })])
                     return [function.consti32(-1)]
                 }
             }
@@ -1648,12 +1646,9 @@ class MinimizerTests: XCTestCase {
             return b.buildWasmModule { wasmModule in
                 let tag = wasmModule.addTag(parameterTypes: [])
                 wasmModule.addWasmFunction(with: [] => [.wasmi64]) { function, _, _ in
-                    function.wasmBuildLegacyTry(with: [] => [], args: []) { label, _ in
-                            function.wasmReturn(function.consti64(123))
-                        function.WasmBuildLegacyCatch(tag: tag) { label, exception, args in
-                            function.wasmUnreachable()
-                        }
-                    }
+                    function.wasmBuildLegacyTryVoid(
+                        body: { _ in function.wasmReturn(function.consti64(123)) },
+                        catchClauses: [(tag: tag, body: { _, _, _ in function.wasmUnreachable() })])
                     evaluator.nextInstructionIsImportant(in: b)
                     return [function.consti64(42)]
                 }
@@ -2286,6 +2281,10 @@ class MinimizerTests: XCTestCase {
 
         func nextInstructionIsImportant(in b: ProgramBuilder) {
             initialIndicesOfTheImportantInstructions.append(b.indexOfNextInstruction())
+        }
+
+        func instructionNIsImportant(in b: ProgramBuilder, n: Int) {
+            initialIndicesOfTheImportantInstructions.append(b.indexOfNextInstruction() + n - 1)
         }
 
         func operationIsImportant(_ op: Fuzzilli.Operation.Type) {

@@ -1551,11 +1551,8 @@ class JSTyperTests: XCTestCase {
                 // This forces an import of the wasmGlobalf64, second global
                 function.wasmLoadGlobal(globalVariable: wasmGlobalf64)
                 // This forces an import and a re-export of the jsTag.
-                function.wasmBuildLegacyTry(with: [] => [], args: []) { label, _ in
-                    function.WasmBuildLegacyCatch(tag: jsTag) { label, exception, args in
-                        function.wasmReturn()
-                    }
-                }
+                function.wasmBuildLegacyTryVoid(body: { _ in },
+                    catchClauses: [(tag: jsTag, body: {_, _, _ in })])
                 function.wasmUnreachable()
                 return []
             }
