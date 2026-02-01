@@ -32,7 +32,6 @@ let v8DumplingProfile = Profile(
             "--no-sparkplug",
             "--maglev-dumping",
             "--turbofan-dumping",
-            "--turbofan-dumping-print-deopt-frames"
         ]
 
         return args
