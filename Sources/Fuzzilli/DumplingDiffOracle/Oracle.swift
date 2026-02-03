@@ -221,8 +221,8 @@ public final class DiffOracle {
                 print("]")
                 return false
             }
-            // Remove all skipped frames and the found frame.
-            unoptFramesLeft = unoptFramesLeft[(unoptIndex + 1)...]
+            // Remove all skipped frames but keep the found frame, because we might have multiple deopt points on same offset.
+            unoptFramesLeft = unoptFramesLeft[unoptIndex...]
         }
         return true
     }
