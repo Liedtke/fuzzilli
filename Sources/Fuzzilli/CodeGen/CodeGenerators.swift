@@ -2596,6 +2596,14 @@ public let CodeGenerators: [CodeGenerator] = [
         b.throwException(v)
     },
 
+    CodeGenerator("ConditionalThrowGenerator", inputs: .preferred(.boolean)) { b, cond in
+        let v = b.randomJsVariable()
+        let condition = probability(0.5) ? cond : b.unary(.LogicalNot, cond)
+        b.buildIf(condition) {
+            b.throwException(v)
+        }
+    },
+
     //
     // Language-specific Generators
     //
