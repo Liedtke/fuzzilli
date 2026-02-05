@@ -910,6 +910,30 @@ class LifterTests: XCTestCase {
 
     }
 
+    func testHoleyArrayLifting() {
+        let fuzzer = makeMockFuzzer()
+        let b = fuzzer.makeBuilder()
+
+        let v0 = b.loadInt(42)
+        let v1 = b.loadUndefined()
+        // Should lift to: [42,,,42]
+        b.createArray(with: [v0, v1, v1, v0])
+
+        // Should lift to: [,,]
+        b.createArray(with: [v1, v1])
+
+        let program = b.finalize()
+        let actual = fuzzer.lifter.lift(program)
+
+        let expected = """
+        [42,,,42];
+        [,,];
+
+        """
+
+        XCTAssertEqual(actual, expected)
+    }
+
     func testBinaryOperationLifting() {
         let fuzzer = makeMockFuzzer()
         let b = fuzzer.makeBuilder()

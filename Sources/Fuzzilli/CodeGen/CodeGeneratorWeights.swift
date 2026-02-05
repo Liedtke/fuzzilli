@@ -28,6 +28,8 @@ public let codeGeneratorWeights = [
     "NamedVariableGenerator":                   10,
     "ArrayGenerator":                           10,
     "FloatArrayGenerator":                      10,
+    "HoleyArrayGenerator":                      10,
+    "ObjectIntegrityLevelGenerator":            1,
     "IntArrayGenerator":                        10,
     "TypedArrayGenerator":                      20,
     "BuiltinObjectInstanceGenerator":           10,

@@ -214,6 +214,48 @@ public let CodeGenerators: [CodeGenerator] = [
         b.createFloatArray(with: values)
     },
 
+    CodeGenerator("HoleyArrayGenerator", inputs: .one, produces: [.jsArray]) { b, _ in
+        let undefined = b.loadUndefined()
+        // Hide 'undefined' so it is for sure inlined, allowing the lifter to produce holes [,,].
+        // NOTE: undefineds are lifted to holes
+        b.hide(undefined)
+
+        var size = Int.random(in: 1...7)
+        var elements = [Variable]()
+
+        // Randomly select the type of elements to surround the holes with.
+        let getElementOptions : [() -> Variable] = [
+            // Holey Smi (in most cases)
+            {b.randomVariable(ofType: .integer) ?? b.loadInt(b.randomInt())},
+            // Holey Double
+            {b.randomVariable(ofType: .float) ?? b.loadFloat(b.randomFloat())},
+            // Holey Elements
+            {b.randomJsVariable()}
+        ]
+        let getElement = getElementOptions.randomElement()!
+
+        let guaranteeHole = Int.random(in: 0..<size) // One element is always a hole.
+        for i in 0..<size {
+            elements.append((probability(0.8) || i == guaranteeHole)
+                ? undefined : getElement() )
+        }
+
+        let array = b.createArray(with: elements)
+
+        // 50% chance to access a random element, increasing the chance of hole usage.
+        if probability(0.5) {
+            b.getElement(Int64.random(in: 0..<Int64(size)), of: array)
+        }
+    },
+
+    CodeGenerator("ObjectIntegrityLevelGenerator", inputs: .one) { b, obj in
+        let Object = b.createNamedVariable(forBuiltin: "Object")
+        b.hide(Object)
+
+        let transitionMethod = chooseUniform(from: ["seal", "freeze", "preventExtensions"])
+        b.callMethod(transitionMethod, on: Object, withArgs: [obj])
+    },
+
     CodeGenerator("BuiltinObjectInstanceGenerator", produces: [.object()]) {
         b in
         let builtin = chooseUniform(from: [
