@@ -773,7 +773,6 @@ public func v8ProcessArgs(randomize: Bool, forSandbox: Bool) -> [String] {
         "--omit-quit",
         "--allow-natives-syntax",
         "--fuzzing",
-        "--jit-fuzzing",
         "--future",
         "--harmony",
         "--experimental-fuzzing",
@@ -811,6 +810,10 @@ public func v8ProcessArgs(randomize: Bool, forSandbox: Bool) -> [String] {
 
     if probability(0.1) {
         args.append("--no-short-builtin-calls")
+    }
+
+    if probability(0.8) {
+        args.append("--jit-fuzzing")
     }
 
     // Disabling Liftoff enables "direct" coverage for the optimizing compiler, though some
@@ -1033,6 +1036,8 @@ public func v8ProcessArgs(randomize: Bool, forSandbox: Bool) -> [String] {
         chooseBooleanFlag("always-osr")
         chooseBooleanFlag("concurrent-osr")
         chooseBooleanFlag("force-slow-path")
+        chooseBooleanFlag("lazy")
+        chooseBooleanFlag("lazy-eval")
 
         // Maglev related flags
         chooseBooleanFlag("maglev-inline-api-calls")
