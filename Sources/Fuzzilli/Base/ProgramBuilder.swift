@@ -4397,6 +4397,13 @@ public class ProgramBuilder {
         public func wasmExternConvertAny(_ ref: Variable) -> Variable {
             b.emit(WasmExternConvertAny(), withInputs: [ref]).output
         }
+
+        @discardableResult
+        public func wasmRefTest(_ ref: Variable, refType: ILType, typeDef: Variable? = nil) -> Variable {
+            typeDef == nil
+                ? b.emit(WasmRefTest(refType: refType), withInputs: [ref]).output
+                : b.emit(WasmRefTest(refType: refType), withInputs: [ref, typeDef!]).output
+        }
     }
 
     public class WasmModule {

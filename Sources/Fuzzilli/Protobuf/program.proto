@@ -362,6 +362,7 @@ message Instruction {
         WasmDefineAdHocSignatureType wasmDefineAdHocSignatureType = 336;
         WasmStructNew wasmStructNew = 337;
         WasmRefEq wasmRefEq = 338;
+        WasmRefTest wasmRefTest = 339;
     }
 }
 

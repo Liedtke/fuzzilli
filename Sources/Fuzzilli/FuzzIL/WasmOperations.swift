@@ -2320,6 +2320,16 @@ class WasmExternConvertAny: WasmOperation {
     }
 }
 
+class WasmRefTest: WasmOperation {
+    override var opcode: Opcode { .wasmRefTest(self) }
+    let type: ILType
+
+    init(refType: ILType) {
+        self.type = refType
+        super.init(numInputs: 1 + type.requiredInputCount(), numOutputs: 1, requiredContext: [.wasmFunction])
+    }
+}
+
 /// An atomic load from Wasm memory.
 /// The accessed address is base + offset.
 final class WasmAtomicLoad: WasmOperation {

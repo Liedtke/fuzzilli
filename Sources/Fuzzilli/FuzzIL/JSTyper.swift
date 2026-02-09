@@ -922,6 +922,8 @@ public struct JSTyper: Analyzer {
                 setType(of: instr.output, to: .wasmRefI31(shared: op.isShared))
             case .wasmI31Get(_):
                 setType(of: instr.output, to: .wasmi32)
+            case .wasmRefTest(_):
+                setType(of: instr.output, to: .wasmi32)
             case .wasmAnyConvertExtern(_):
                 // TODO(pawkra): forward shared bit & update the comment
                 // any.convert_extern forwards the nullability bit from the input.

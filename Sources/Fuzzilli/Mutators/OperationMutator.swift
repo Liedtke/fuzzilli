@@ -508,6 +508,21 @@ public class OperationMutator: BaseInstructionMutator {
             newOp = WasmStructGet(fieldIndex: op.fieldIndex, isSigned: !op.isSigned)
         case .wasmI31Get(let op):
             newOp = WasmI31Get(isSigned: !op.isSigned)
+        case .wasmRefTest(let op):
+            let newType: ILType
+            switch op.type.wasmReferenceType!.kind {
+            case .Abstract(let heapTypeInfo):
+                let chosenType = chooseUniform(
+                    from: WasmAbstractHeapType.allCases.filter {
+                        $0 != heapTypeInfo.heapType && $0.inSameHierarchy(heapTypeInfo.heapType)
+                    }
+                )
+                newType = ILType.wasmRef(.Abstract(HeapTypeInfo(chosenType, shared: false)), nullability: Bool.random())
+            case .Index(_):
+                let nullable = op.type.wasmReferenceType!.nullability
+                newType = ILType.wasmRef(.Index(), nullability: !nullable)
+            }
+            newOp = WasmRefTest(refType: newType)
         // Unexpected operations to make the switch fully exhaustive.
         case .nop(_),
              .loadUndefined(_),

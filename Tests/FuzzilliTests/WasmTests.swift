@@ -4977,6 +4977,73 @@ class WasmGCTests: XCTestCase {
         let jsProg = fuzzer.lifter.lift(prog)
         testForOutput(program: jsProg, runner: runner, outputString: "42\n42\nnull\nnull\n")
     }
+
+    func testRefTest() throws {
+        let runner = try GetJavaScriptExecutorOrSkipTest()
+        let liveTestConfig = Configuration(logLevel: .error, enableInspection: true)
+        let fuzzer = makeMockFuzzer(config: liveTestConfig, environment: JavaScriptEnvironment())
+        let b = fuzzer.makeBuilder()
+
+        let arrayType = b.wasmDefineTypeGroup {b.wasmDefineArrayType(elementType: .wasmi32, mutability: false)}[0]
+        let tagi32 = b.createWasmTag(parameterTypes: [.wasmi32])
+
+        let module = b.buildWasmModule { wasmModule in
+            wasmModule.addWasmFunction(with: [] => [.wasmi32]) { function, label, args in
+                let array = function.wasmArrayNewFixed(arrayType: arrayType, elements: [])
+                let null = function.wasmRefNull(type: .wasmArrayRef())
+                let refType = ILType.wasmRef(.Index(), nullability: false)
+                let refNullType = ILType.wasmRef(.Index(), nullability: true)
+                let results = [
+                    function.wasmRefTest(array, refType: refType, typeDef: arrayType),
+                    function.wasmRefTest(null, refType: refType, typeDef: arrayType),
+                    function.wasmRefTest(array, refType: refNullType, typeDef: arrayType),
+                    function.wasmRefTest(null, refType: refNullType, typeDef: arrayType),
+                ]
+                let result = results.reduce(function.consti32(0), { acc, r in
+                    let shifted = function.wasmi32BinOp(acc, function.consti32(10), binOpKind: WasmIntegerBinaryOpKind.Mul)
+                    return function.wasmi32BinOp(shifted, r, binOpKind: WasmIntegerBinaryOpKind.Add)
+                })
+                return [result]
+            }
+            wasmModule.addWasmFunction(with: [] => [.wasmi32]) { function, label, args in
+                let array = function.wasmArrayNewFixed(arrayType: arrayType, elements: [])
+                let result = function.wasmRefTest(array, refType: .wasmEqRef())
+                return [result]
+            }
+            wasmModule.addWasmFunction(with: [] => [.wasmi32]) { function, label, args in
+                let ref = function.wasmRefI31(function.consti32(0))
+                let refType = ILType.wasmRef(.Index(), nullability: false)
+                let result = function.wasmRefTest(ref, refType: refType, typeDef: arrayType)
+                return [result]
+            }
+            wasmModule.addWasmFunction(with: [.wasmRefExtern()] => [.wasmi32]) { function, label, args in
+                let result = function.wasmRefTest(args[0], refType: .wasmNullExternRef())
+                return [result]
+            }
+            wasmModule.addWasmFunction(with: [] => [.wasmi32]) { function, label, args in
+                let exnref = function.wasmBuildBlockWithResults(with: [] => [.wasmExnRef()], args: []) { catchLabel, _ in
+                    function.wasmBuildTryTable(with: [] => [], args: [catchLabel], catches: [.AllRef]) { _, _ in
+                        function.WasmBuildThrow(tag: tagi32, inputs: [function.consti32(42)])
+                        return []
+                    }
+                    return [function.wasmRefNull(type: .wasmExnRef())]
+                }[0]
+                let result = function.wasmRefTest(exnref, refType: .wasmExnRef())
+                return [result]
+            }
+        }
+
+        let exports = module.loadExports()
+        let outputFunc = b.createNamedVariable(forBuiltin: "output")
+        for method in module.getExportedMethods() {
+            let result = b.callMethod(method.0, on: exports, withArgs: [b.loadInt(42)])
+            b.callFunction(outputFunc, withArgs: [result])
+        }
+
+        let prog = b.finalize()
+        let jsProg = fuzzer.lifter.lift(prog)
+        testForOutput(program: jsProg, runner: runner, outputString: "1011\n1\n0\n0\n1\n")
+    }
 }
 
 class WasmNumericalTests: XCTestCase {

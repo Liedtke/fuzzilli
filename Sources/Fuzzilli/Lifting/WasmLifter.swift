@@ -2196,6 +2196,16 @@ public class WasmLifter {
             return Data([Prefix.GC.rawValue, 0x1A])
         case .wasmExternConvertAny(_):
             return Data([Prefix.GC.rawValue, 0x1B])
+        case .wasmRefTest(let op):
+            let refType = op.type.wasmReferenceType!
+            let opCode: UInt8 = refType.nullability ? 0x15 : 0x14
+            let typeData = if refType.isAbstract() {
+                try encodeHeapType(op.type)
+            } else {
+                try encodeWasmGCType(typer.getTypeDescription(of: wasmInstruction.input(1)))
+            }
+            return Data([Prefix.GC.rawValue, opCode]) + typeData
+
         case .wasmDefineAdHocSignatureType(_):
             // Nothing to do here, types are defined inside the typegroups, not inside a wasm
             // function.

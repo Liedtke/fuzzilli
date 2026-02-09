@@ -340,6 +340,53 @@ public let WasmCodeGenerators: [CodeGenerator] = [
         b.currentWasmModule.currentWasmFunction.wasmExternConvertAny(ref)
     },
 
+    CodeGenerator(
+        "WasmRefTestGenerator", inContext: .single(.wasmFunction),
+        inputs: .requiredComplex(.init(.wasmTypeDef())),
+        produces: [.wasmi32]
+    ) { b, typeDef in
+        guard let abstractType =
+            b.type(of: typeDef).wasmTypeDefinition?.description?.abstractHeapSupertype?.heapType
+            as? WasmAbstractHeapType
+        else { fatalError("Invalid type description for \(b.type(of: typeDef))") }
+        let function = b.currentWasmModule.currentWasmFunction
+        let variable = switch abstractType {
+        case .WasmFunc, .WasmNoFunc:
+            function.findOrGenerateWasmVar(ofType: .wasmFuncRef())
+        case .WasmArray, .WasmStruct:
+            function.findOrGenerateWasmVar(ofType: .wasmAnyRef())
+        default:
+            fatalError("The type \(abstractType) shouldn't have a definition")
+        }
+        let refType = ILType.wasmRef(.Index(), nullability: Bool.random())
+        function.wasmRefTest(variable, refType: refType, typeDef: typeDef)
+    },
+
+    CodeGenerator(
+        "WasmRefTestAbstractGenerator", inContext: .single(.wasmFunction),
+        inputs: .required(.wasmGenericRef),
+        produces: [.wasmi32]
+    ) { b, ref in
+        let function = b.currentWasmModule.currentWasmFunction
+        let abstractType = switch b.type(of: ref).wasmReferenceType!.kind {
+            case .Abstract(let heapTypeInfo):
+                heapTypeInfo.heapType
+            case .Index(let desc):
+                desc.get()!.abstractHeapSupertype!.heapType
+        }
+        let sameHierarchy = WasmAbstractHeapType.allCases.filter {
+            $0 != abstractType && $0.inSameHierarchy(abstractType)
+        }
+        guard sameHierarchy.count > 0
+        else { fatalError("The type \(abstractType) doesn't belong in any hierarchy") }
+
+        let chosenType = chooseUniform(from: sameHierarchy)
+        function.wasmRefTest(
+            ref,
+            refType: .wasmRef(.Abstract(HeapTypeInfo(chosenType, shared: false)), nullability: Bool.random())
+        )
+    },
+
     // Primitive Value Generators
 
     CodeGenerator(
