@@ -311,4 +311,117 @@ final class DiffOracleTests: XCTestCase {
 
         XCTAssertTrue(DiffOracle.relate(opt, with: unopt))
     }
+
+    func testRegisterPersistence() {
+        // Scenario:
+        // 1. We set r0=A, r1=B (m:2) in the first frame.
+        // 2. In the second frame we only use r0 (m:1). r1 is NOT in the frame, but should exist in backing store.
+        // 3. Go back to having two registers (m:2) in the third frame. r1 should still be B (inherited from frame 0).
+
+        let trace = """
+        ---I
+        b:10
+        f:1
+        n:0
+        m:2
+        r0:A
+        r1:B
+
+        ---M
+        b:20
+        m:1
+        r0:A_Prime
+
+        ---I
+        b:30
+        m:2
+        r0:A_Prime
+
+        """
+
+        let expectedLastFrame = """
+        ---I
+        b:30
+        f:1
+        n:0
+        m:2
+        r0:A_Prime
+        r1:B
+
+        """
+        XCTAssertTrue(DiffOracle.relate(expectedLastFrame, with: trace))
+    }
+
+    func testMissingValueInjection() {
+        // Scenario:
+        // Frame 1: m=1, r0=A
+        // Frame 2: m=3. The parser must grow the buffer. r1 and r2 should be "<missing>".
+
+        let trace = """
+        ---I
+        b:10
+        f:1
+        n:0
+        m:1
+        r0:A
+
+        ---I
+        b:20
+        m:3
+
+        """
+
+        // Explicitly check that r1 and r2 are missing in the expanded frame.
+        let explicitMissing = """
+        ---I
+        b:20
+        f:1
+        n:0
+        m:3
+        r0:A
+        r1:<missing>
+        r2:<missing>
+
+        """
+
+        XCTAssertTrue(DiffOracle.relate(explicitMissing, with: trace))
+    }
+
+    func testFarJumpInRegisterIndex() {
+        // Scenario: A frame references a high register index directly without defining intermediate ones.
+        // Buffer should auto-grow and fill with <missing>.
+
+        let trace = """
+        ---I
+        b:10
+        f:1
+        n:0
+        m:10
+        r9:Z
+
+        """
+
+        // This frame should have r0...r8 as <missing> and r9 as Z.
+        let expected = """
+        ---I
+        b:10
+        f:1
+        n:0
+        m:10
+        r0:<missing>
+        r1:<missing>
+        r2:<missing>
+        r3:<missing>
+        r4:<missing>
+        r5:<missing>
+        r6:<missing>
+        r6:<missing>
+        r7:<missing>
+        r8:<missing>
+        r9:Z
+
+        """
+
+        XCTAssertTrue(DiffOracle.relate(expected, with: trace))
+    }
 }

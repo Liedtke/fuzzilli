@@ -121,7 +121,13 @@ public final class DiffOracle {
         }
     }
 
-    private static func parseDiffFrame(_ frameArr: ArraySlice<Substring>, _ prevFrame: Frame?) -> Frame {
+    private static func parseDiffFrame(
+        _ frameArr: ArraySlice<Substring>,
+        _ prevFrame: Frame?,
+        _ runningArgs: inout [String],
+        _ runningRegs: inout [String]
+    ) -> Frame {
+
         func parseValue<T>(prefix: String, defaultValue: T, index: inout Int, conversion: (Substring) -> T) -> T {
             if index < frameArr.endIndex && frameArr[index].starts(with: prefix) {
                 let value = conversion(frameArr[index].dropFirst(prefix.count))
@@ -153,30 +159,28 @@ public final class DiffOracle {
         let argCount = parseValue(prefix: "n:", defaultValue: prevFrame?.arguments.count ?? -1, index: &i){ Int($0)! }
         let regCount = parseValue(prefix: "m:", defaultValue: prevFrame?.registers.count ?? -1, index: &i){ Int($0)! }
 
-        func updateValues(prefix: String, totalCount: Int, oldValues: [String]) -> [String] {
-            var newValues = oldValues
+        func updateValues(prefix: String, requiredCount: Int, buffer: inout [String]) -> [String] {
 
-            if newValues.count > totalCount {
-                newValues.removeLast(newValues.count - totalCount)
-            } else if newValues.count < totalCount {
-                let missingCount = totalCount - newValues.count
+            if buffer.count < requiredCount {
+                let missingCount = requiredCount - buffer.count
                 let defaults = Array(repeating: "<missing>", count: missingCount)
-                newValues.append(contentsOf: defaults)
+                buffer.append(contentsOf: defaults)
             }
 
             while i < frameArr.endIndex && frameArr[i].starts(with: prefix) {
                 let data = frameArr[i].dropFirst(1).split(separator: ":", maxSplits: 1)
                 let number = Int(data[0])!
                 let value = String(data[1])
-                newValues[number] = value
+
+                buffer[number] = value
                 i += 1
             }
-            return newValues
 
+            return Array(buffer.prefix(requiredCount))
         }
 
-        let arguments = updateValues(prefix: "a", totalCount: argCount, oldValues: prevFrame?.arguments ?? [])
-        let registers = updateValues(prefix: "r", totalCount: regCount, oldValues: prevFrame?.registers ?? [])
+        let arguments = updateValues(prefix: "a", requiredCount: argCount, buffer: &runningArgs)
+        let registers = updateValues(prefix: "r", requiredCount: regCount, buffer: &runningRegs)
 
         let frame = Frame(bytecodeOffset: bytecodeOffset,
                           accumulator: accumulator,
@@ -191,13 +195,16 @@ public final class DiffOracle {
         var frameArray: [Frame] = []
         var prevFrame: Frame? = nil
 
+        var runningArgs: [String] = []
+        var runningRegs: [String] = []
+
         let split = stdout.split(separator: "\n", omittingEmptySubsequences: false)
         let frames = split.split(separator: "")
 
         for frame in frames {
             assert(frame.first?.starts(with: "---") == true, "Invalid frame header found: \(frame.first ?? "nil")")
 
-            prevFrame = parseDiffFrame(frame, prevFrame)
+            prevFrame = parseDiffFrame(frame, prevFrame, &runningArgs, &runningRegs)
             frameArray.append(prevFrame!)
         }
         return frameArray
