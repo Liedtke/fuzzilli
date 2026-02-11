@@ -82,13 +82,46 @@ public final class DiffOracle {
         case deoptTurbofan
     }
 
-    private struct Frame: Equatable {
+    private struct Frame: Equatable, CustomStringConvertible {
         let bytecodeOffset: Int
         let accumulator: String
         let arguments: [String]
         let registers: [String]
         let functionId: Int
         let frameType: FrameType
+
+        // This is only needed for debug output.
+        var description: String {
+            var lines: [String] = []
+
+            lines.append("")
+            lines.append("╔══════════════════════════════════════")
+            lines.append("║ Frame: \(frameType) (FuncID: \(functionId), Offset: \(bytecodeOffset))")
+            lines.append("╠══════════════════════════════════════")
+            lines.append("║ Accumulator: \(accumulator)")
+
+            if arguments.isEmpty {
+                lines.append("║ Arguments: []")
+            } else {
+                lines.append("║ Arguments:")
+                for (index, arg) in arguments.enumerated() {
+                    lines.append("║   [\(index)] \(arg)")
+                }
+            }
+
+            if registers.isEmpty {
+                lines.append("║ Registers: []")
+            } else {
+                lines.append("║ Registers:")
+                for (index, reg) in registers.enumerated() {
+                    lines.append("║   [\(index)] \(reg)")
+                }
+            }
+
+            lines.append("╚══════════════════════════════════════")
+
+            return lines.joined(separator: "\n")
+        }
 
         // 'reference' is the value from Unoptimized frame.
         func matches(reference: Frame) -> Bool {
@@ -217,12 +250,12 @@ public final class DiffOracle {
 
         for optFrame in optFrames {
             guard let unoptIndex = unoptFramesLeft.firstIndex(where: optFrame.matches) else {
-                print(optFrame as AnyObject)
+                print(optFrame)
                 print("--------------------------")
                 print("[")
                 for unoptFrame in unoptFrames {
                     if unoptFrame.bytecodeOffset == optFrame.bytecodeOffset {
-                        print(unoptFrame as AnyObject)
+                        print(unoptFrame)
                     }
                 }
                 print("]")
