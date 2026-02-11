@@ -77,32 +77,36 @@ public let ForceTurboFanCompilationGenerator = CodeGenerator("ForceTurboFanCompi
     assert(b.type(of: f).Is(.function()))
     let arguments = b.randomArguments(forCalling: f)
 
-    b.callFunction(f, withArgs: arguments)
+    let guardCalls = probability(0.5)
+
+    b.callFunction(f, withArgs: arguments, guard: guardCalls)
 
     b.eval("%PrepareFunctionForOptimization(%@)", with: [f]);
 
-    b.callFunction(f, withArgs: arguments)
-    b.callFunction(f, withArgs: arguments)
+    b.callFunction(f, withArgs: arguments, guard: guardCalls)
+    b.callFunction(f, withArgs: arguments, guard: guardCalls)
 
     b.eval("%OptimizeFunctionOnNextCall(%@)", with: [f]);
 
-    b.callFunction(f, withArgs: arguments)
+    b.callFunction(f, withArgs: arguments, guard: guardCalls)
 }
 
 public let ForceMaglevCompilationGenerator = CodeGenerator("ForceMaglevCompilationGenerator", inputs: .required(.function())) { b, f in
     assert(b.type(of: f).Is(.function()))
     let arguments = b.randomArguments(forCalling: f)
 
-    b.callFunction(f, withArgs: arguments)
+    let guardCalls = probability(0.5)
+
+    b.callFunction(f, withArgs: arguments, guard: guardCalls)
 
     b.eval("%PrepareFunctionForOptimization(%@)", with: [f]);
 
-    b.callFunction(f, withArgs: arguments)
-    b.callFunction(f, withArgs: arguments)
+    b.callFunction(f, withArgs: arguments, guard: guardCalls)
+    b.callFunction(f, withArgs: arguments, guard: guardCalls)
 
     b.eval("%OptimizeMaglevOnNextCall(%@)", with: [f]);
 
-    b.callFunction(f, withArgs: arguments)
+    b.callFunction(f, withArgs: arguments, guard: guardCalls)
 }
 
 public let TurbofanVerifyTypeGenerator = CodeGenerator("TurbofanVerifyTypeGenerator", inputs: .one) { b, v in
@@ -525,11 +529,12 @@ public let LazyDeoptFuzzer = ProgramTemplate("LazyDeoptFuzzer") { b in
     // Turn the call into a recursive call.
     b.reassign(dummyFct, to: realFct)
     let args = b.randomArguments(forCalling: realFct)
+    let guardCalls = probability(0.5)
     b.eval("%PrepareFunctionForOptimization(%@)", with: [realFct]);
-    b.callFunction(realFct, withArgs: args)
+    b.callFunction(realFct, withArgs: args, guard: guardCalls)
     b.eval("%OptimizeFunctionOnNextCall(%@)", with: [realFct]);
     // Call the function.
-    b.callFunction(realFct, withArgs: args)
+    b.callFunction(realFct, withArgs: args, guard: guardCalls)
 }
 
 public let WasmDeoptFuzzer = WasmProgramTemplate("WasmDeoptFuzzer") { b in
@@ -685,16 +690,17 @@ public let FastApiCallFuzzer = ProgramTemplate("FastApiCallFuzzer") { b in
     }
 
     let args = b.randomJsVariables(n: Int.random(in: 0...5))
-    b.callFunction(f, withArgs: args)
+    let guardCalls = probability(0.5)
+    b.callFunction(f, withArgs: args, guard: guardCalls)
 
     b.eval("%PrepareFunctionForOptimization(%@)", with: [f]);
 
-    b.callFunction(f, withArgs: args)
-    b.callFunction(f, withArgs: args)
+    b.callFunction(f, withArgs: args, guard: guardCalls)
+    b.callFunction(f, withArgs: args, guard: guardCalls)
 
     b.eval("%OptimizeFunctionOnNextCall(%@)", with: [f]);
 
-    b.callFunction(f, withArgs: args)
+    b.callFunction(f, withArgs: args, guard: guardCalls)
 
     b.build(n: 10)
 }
