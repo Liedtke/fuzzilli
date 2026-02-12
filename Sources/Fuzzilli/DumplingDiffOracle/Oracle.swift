@@ -201,7 +201,7 @@ public final class DiffOracle {
             }
 
             while i < frameArr.endIndex && frameArr[i].starts(with: prefix) {
-                let data = frameArr[i].dropFirst(1).split(separator: ":", maxSplits: 1)
+                let data = frameArr[i].dropFirst(1).split(separator: ":", maxSplits: 1, omittingEmptySubsequences: false)
                 let number = Int(data[0])!
                 let value = String(data[1])
 

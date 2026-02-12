@@ -424,4 +424,30 @@ final class DiffOracleTests: XCTestCase {
 
         XCTAssertTrue(DiffOracle.relate(expected, with: trace))
     }
+
+    func testEmptyStringValueParsing() {
+        let unopt = """
+        ---I
+        b:10
+        f:1
+        n:0
+        m:6
+        r0:ValA
+        r5:
+
+        """
+
+        let opt = """
+        ---I
+        b:10
+        f:1
+        n:0
+        m:6
+        r0:ValA
+        r5:
+
+        """
+
+        XCTAssertTrue(DiffOracle.relate(opt, with: unopt), "Should handle empty register values (e.g. 'r5:') without crashing")
+    }
 }
