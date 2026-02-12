@@ -106,6 +106,7 @@ class EnvironmentTests: XCTestCase {
             "setTimeout",
             "console",
             "escape",
+            "onerror",
             "unescape",
             "encodeURIComponent",
             "encodeURI",
