@@ -28,7 +28,7 @@ let v8DumplingProfile = Profile(
             "--experimental-fuzzing",
             "--js-staging",
             "--expose-fast-api",
-            "--verify-predictable",
+            "--predictable",
             "--no-sparkplug",
             "--maglev-dumping",
             "--turbofan-dumping",
@@ -56,7 +56,7 @@ let v8DumplingProfile = Profile(
         "--experimental-fuzzing",
         "--js-staging",
         "--expose-fast-api",
-        "--verify-predictable"
+        "--predictable"
     ],
 
     processEnv: [:],
