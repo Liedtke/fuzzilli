@@ -254,7 +254,7 @@ public final class DiffOracle {
                 print("--------------------------")
                 print("[")
                 for unoptFrame in unoptFrames {
-                    if unoptFrame.bytecodeOffset == optFrame.bytecodeOffset {
+                    if unoptFrame.bytecodeOffset == optFrame.bytecodeOffset && unoptFrame.functionId == optFrame.functionId {
                         print(unoptFrame)
                     }
                 }
