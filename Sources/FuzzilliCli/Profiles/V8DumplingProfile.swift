@@ -66,6 +66,33 @@ let v8DumplingProfile = Profile(
     timeout: Timeout.interval(300, 900),
 
     codePrefix: """
+                // --- Determinism Shim ---
+                (function() {
+                    const originalDate = Date;
+                    const FIXED_TIME = 1767225600000;
+                    const FIXED_STRING = new originalDate(FIXED_TIME).toString();
+
+                    Date.now = function() { return FIXED_TIME; };
+                    globalThis.Date = new Proxy(originalDate, {
+                        construct(target, args) {
+                            if (args.length === 0) return new target(FIXED_TIME);
+                            return new target(...args);
+                        },
+                        apply(target, thisArg, args) { return FIXED_STRING; }
+                    });
+                    globalThis.Date.prototype = originalDate.prototype;
+
+                    // Math.random shim
+                    const rng = function() {
+                        let s = 0x12345678;
+                        return function() {
+                            s ^= s << 13; s ^= s >> 17; s ^= s << 5;
+                            return (s >>> 0) / 4294967296;
+                        };
+                    }();
+                    Math.random = rng;
+                })();
+                // --- End Determinism Shim ---
                 """,
 
     codeSuffix: """
