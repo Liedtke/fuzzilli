@@ -1138,7 +1138,20 @@ public class Fuzzer {
 
             let unoptimizedDump = try String(contentsOfFile: unoptPath, encoding: .utf8)
 
-            return DiffExecution.diff(optExec: execution, unoptExec: unoptExecution, optDumpOut: optimizedDump, unoptDumpOut: unoptimizedDump)
+            // While Dumpling is not super-stable we print out the program here to not miss anything.
+            let result = DiffExecution.diff(optExec: execution, unoptExec: unoptExecution, optDumpOut: optimizedDump, unoptDumpOut: unoptimizedDump)
+
+            if result.outcome == .differential {
+                logger.error("""
+                ================================================================
+                [DUMPLING]  POTENTIAL DIFFERENTIAL DETECTED
+                ================================================================
+                """)
+
+                logger.error(script)
+            }
+
+            return result
 
         } catch {
             fatalError("Critical failure: Unable to read dump files. Error: \(error)")
