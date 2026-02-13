@@ -73,40 +73,62 @@ public let ForceJITCompilationThroughLoopGenerator = CodeGenerator("ForceJITComp
     }
 }
 
+// Choose argument lists for four function calls of the same function with
+// interesting optimization patterns.
+func chooseArgumentLists(_ b: ProgramBuilder, forCalling f: Variable) -> ([Variable], [Variable], [Variable], [Variable]) {
+    var pool: [[Variable]?] = [nil, nil, nil]
+
+    let getArg = { (i: Int) -> [Variable] in
+        if pool[i] == nil {
+            pool[i] = b.randomArguments(forCalling: f)
+        }
+        return pool[i]!
+    }
+
+    let keepRates = [1.0, 0.97, 0.85, 0.75]
+
+    let args = (0..<4).map { i in
+        probability(keepRates[i]) ? getArg(0) : getArg(probability(0.5) ? 1 : 2)
+    }
+
+    assert(args.count == 4)
+    return (args[0], args[1], args[2], args[3])
+}
+
 public let ForceTurboFanCompilationGenerator = CodeGenerator("ForceTurboFanCompilationGenerator", inputs: .required(.function())) { b, f in
     assert(b.type(of: f).Is(.function()))
-    let arguments = b.randomArguments(forCalling: f)
+    let (args1, args2, args3, args4) = chooseArgumentLists(b, forCalling: f)
 
     let guardCalls = probability(0.5)
 
-    b.callFunction(f, withArgs: arguments, guard: guardCalls)
+    b.callFunction(f, withArgs: args1, guard: guardCalls)
 
     b.eval("%PrepareFunctionForOptimization(%@)", with: [f]);
 
-    b.callFunction(f, withArgs: arguments, guard: guardCalls)
-    b.callFunction(f, withArgs: arguments, guard: guardCalls)
+    b.callFunction(f, withArgs: args2, guard: guardCalls)
+    b.callFunction(f, withArgs: args3, guard: guardCalls)
 
     b.eval("%OptimizeFunctionOnNextCall(%@)", with: [f]);
 
-    b.callFunction(f, withArgs: arguments, guard: guardCalls)
+    b.callFunction(f, withArgs: args4, guard: guardCalls)
 }
 
 public let ForceMaglevCompilationGenerator = CodeGenerator("ForceMaglevCompilationGenerator", inputs: .required(.function())) { b, f in
     assert(b.type(of: f).Is(.function()))
-    let arguments = b.randomArguments(forCalling: f)
+    let (args1, args2, args3, args4) = chooseArgumentLists(b, forCalling: f)
 
     let guardCalls = probability(0.5)
 
-    b.callFunction(f, withArgs: arguments, guard: guardCalls)
+    b.callFunction(f, withArgs: args1, guard: guardCalls)
 
     b.eval("%PrepareFunctionForOptimization(%@)", with: [f]);
 
-    b.callFunction(f, withArgs: arguments, guard: guardCalls)
-    b.callFunction(f, withArgs: arguments, guard: guardCalls)
+    b.callFunction(f, withArgs: args2, guard: guardCalls)
+    b.callFunction(f, withArgs: args3, guard: guardCalls)
 
     b.eval("%OptimizeMaglevOnNextCall(%@)", with: [f]);
 
-    b.callFunction(f, withArgs: arguments, guard: guardCalls)
+    b.callFunction(f, withArgs: args4, guard: guardCalls)
 }
 
 public let TurbofanVerifyTypeGenerator = CodeGenerator("TurbofanVerifyTypeGenerator", inputs: .one) { b, v in
