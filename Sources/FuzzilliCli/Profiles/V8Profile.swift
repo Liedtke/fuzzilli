@@ -59,8 +59,7 @@ let v8Profile = Profile(
 
     additionalCodeGenerators: [
         (ForceJITCompilationThroughLoopGenerator,  5),
-        (ForceTurboFanCompilationGenerator,        5),
-        (ForceMaglevCompilationGenerator,          5),
+        (ForceCompilationGenerator,               20),
         (TurbofanVerifyTypeGenerator,             10),
 
         (WorkerGenerator,                         10),
