@@ -522,7 +522,8 @@ let v8SandboxProfile = Profile(
 
     additionalCodeGenerators: [
         (ForceJITCompilationThroughLoopGenerator,  5),
-        (ForceCompilationGenerator,               20),
+        (ForceTurboFanCompilationGenerator,        5),
+        (ForceMaglevCompilationGenerator,          5),
         (V8GcGenerator,                           10),
         (WasmStructGenerator,                      5),
         (WasmArrayGenerator,                       5),

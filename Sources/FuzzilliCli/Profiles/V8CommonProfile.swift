@@ -95,7 +95,7 @@ func chooseArgumentLists(_ b: ProgramBuilder, forCalling f: Variable) -> ([Varia
     return (args[0], args[1], args[2], args[3])
 }
 
-public let ForceCompilationGenerator = CodeGenerator("ForceCompilationGenerator", inputs: .required(.function())) { b, f in
+public let ForceTurboFanCompilationGenerator = CodeGenerator("ForceTurboFanCompilationGenerator", inputs: .required(.function())) { b, f in
     assert(b.type(of: f).Is(.function()))
     let (args1, args2, args3, args4) = chooseArgumentLists(b, forCalling: f)
 
@@ -108,8 +108,25 @@ public let ForceCompilationGenerator = CodeGenerator("ForceCompilationGenerator"
     b.callFunction(f, withArgs: args2, guard: guardCalls)
     b.callFunction(f, withArgs: args3, guard: guardCalls)
 
-    let optimizer = chooseUniform(from: ["OptimizeFunctionOnNextCall", "OptimizeMaglevOnNextCall"])
-    b.eval("%\(optimizer)(%@)", with: [f]);
+    b.eval("%OptimizeFunctionOnNextCall(%@)", with: [f]);
+
+    b.callFunction(f, withArgs: args4, guard: guardCalls)
+}
+
+public let ForceMaglevCompilationGenerator = CodeGenerator("ForceMaglevCompilationGenerator", inputs: .required(.function())) { b, f in
+    assert(b.type(of: f).Is(.function()))
+    let (args1, args2, args3, args4) = chooseArgumentLists(b, forCalling: f)
+
+    let guardCalls = probability(0.5)
+
+    b.callFunction(f, withArgs: args1, guard: guardCalls)
+
+    b.eval("%PrepareFunctionForOptimization(%@)", with: [f]);
+
+    b.callFunction(f, withArgs: args2, guard: guardCalls)
+    b.callFunction(f, withArgs: args3, guard: guardCalls)
+
+    b.eval("%OptimizeMaglevOnNextCall(%@)", with: [f]);
 
     b.callFunction(f, withArgs: args4, guard: guardCalls)
 }
