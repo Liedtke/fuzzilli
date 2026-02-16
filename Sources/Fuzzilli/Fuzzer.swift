@@ -547,7 +547,7 @@ public class Fuzzer {
 
         let dummy = b.buildPlainFunction(with: .parameters(n: 0)) { _ in }
         var variablesToReplaceWithDummy = VariableSet()
-        b.adopting(from: program) {
+        b.adopting() {
             for instr in program.code {
                 var removeInstruction = false
                 switch instr.op.opcode {
@@ -644,7 +644,7 @@ public class Fuzzer {
 
         // Third and final attempt at fixing up the program: simply wrap the entire program in a try-catch block.
         b.buildTryCatchFinally(tryBody: {
-            b.adopting(from: program) {
+            b.adopting() {
                 for instr in program.code {
                     b.adopt(instr)
                 }

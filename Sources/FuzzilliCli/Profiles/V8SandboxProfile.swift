@@ -37,7 +37,7 @@ fileprivate struct SandboxFuzzingPostProcessor: FuzzingPostProcessor {
             }
         }
 
-        b.adopting(from: program) {
+        b.adopting() {
             for instr in program.code {
                 b.adopt(instr)
 

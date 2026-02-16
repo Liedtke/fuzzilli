@@ -1397,15 +1397,15 @@ public class ProgramBuilder {
 
     ///
     /// Adoption of variables from a different program.
-    /// Required when copying instructions between program.
+    /// Required when copying instructions between programs.
     ///
     private var varMaps = [VariableMap<Variable>]()
 
-    /// Prepare for adoption of variables from the given program.
+    /// Prepare for adoption of variables from another program.
     ///
-    /// This sets up a mapping for variables from the given program to the
+    /// This sets up a mapping for variables from another program to the
     /// currently constructed one to avoid collision of variable names.
-    public func beginAdoption(from program: Program) {
+    public func beginAdoption() {
         varMaps.append(VariableMap())
     }
 
@@ -1414,9 +1414,9 @@ public class ProgramBuilder {
         varMaps.removeLast()
     }
 
-    /// Executes the given block after preparing for adoption from the provided program.
-    public func adopting(from program: Program, _ block: () -> Void) {
-        beginAdoption(from: program)
+    /// Executes the given block after preparing for adoption.
+    public func adopting(_ block: () -> Void) {
+        beginAdoption()
         block()
         endAdoption()
     }
@@ -1453,7 +1453,7 @@ public class ProgramBuilder {
     /// This also renames any variable used in the given program so all variables
     /// from the appended program refer to the same values in the current program.
     public func append(_ program: Program) {
-        adopting(from: program) {
+        adopting() {
             for instr in program.code {
                 adopt(instr)
             }

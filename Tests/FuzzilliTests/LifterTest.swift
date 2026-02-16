@@ -3322,7 +3322,7 @@ class LifterTests: XCTestCase {
         let _ = lifter.lift(prog)
 
         // Now we build the mutated Program.
-        b.beginAdoption(from: prog)
+        b.beginAdoption()
         for i in 0..<mutationIndex {
             b.adopt(prog.code[i])
         }
