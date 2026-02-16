@@ -132,6 +132,34 @@ final class DiffOracleTests: XCTestCase {
         XCTAssertTrue(DiffOracle.relate(opt, with: unopt))
     }
 
+    func testNonMaterializedArgument() {
+        let unopt = """
+        ---I
+        b:10
+        f:1
+        x:0
+        n:2
+        m:0
+        a0:RealVal
+        a1:OtherVal
+
+        """
+
+        let opt = """
+        ---I
+        b:10
+        f:1
+        x:0
+        n:2
+        m:0
+        a0:<non-materialized>
+        a1:OtherVal
+
+        """
+
+        XCTAssertTrue(DiffOracle.relate(opt, with: unopt))
+    }
+
     func testArgumentMismatch() {
         let unopt = """
         ---I

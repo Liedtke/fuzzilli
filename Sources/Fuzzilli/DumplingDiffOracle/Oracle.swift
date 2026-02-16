@@ -133,9 +133,9 @@ public final class DiffOracle {
                 return false
             }
 
-            // Logic: 'self' is the Optimized frame. It is allowed to have "<optimized_out>".
+            // Logic: 'self' is the Optimized frame. It is allowed to have "<optimized_out>" or "<non-materialized>".
             func isMatch(_ optValue: String, unoptValue: String) -> Bool {
-                return optValue == "<optimized_out>" || optValue == unoptValue
+                return optValue == "<optimized_out>" || optValue == "<non-materialized>" || optValue == unoptValue
             }
 
             if !isMatch(self.accumulator, unoptValue: reference.accumulator) {
