@@ -76,23 +76,20 @@ public let ForceJITCompilationThroughLoopGenerator = CodeGenerator("ForceJITComp
 // Choose argument lists for four function calls of the same function with
 // interesting optimization patterns.
 func chooseArgumentLists(_ b: ProgramBuilder, forCalling f: Variable) -> ([Variable], [Variable], [Variable], [Variable]) {
-    var pool: [[Variable]?] = [nil, nil, nil]
+    var reusePool: [[Variable]] = [b.randomArguments(forCalling: f)]
+    let reuseProbabilities = [1.0, 0.9, 0.9, 0.5]
 
-    let getArg = { (i: Int) -> [Variable] in
-        if pool[i] == nil {
-            pool[i] = b.randomArguments(forCalling: f)
+    let argumentLists = reuseProbabilities.map { p in
+        if probability(p) {
+            return reusePool.randomElement()!
+        } else {
+            reusePool.append(b.randomArguments(forCalling: f))
+            return reusePool.last!
         }
-        return pool[i]!
     }
 
-    let keepRates = [1.0, 0.97, 0.85, 0.75]
-
-    let args = (0..<4).map { i in
-        probability(keepRates[i]) ? getArg(0) : getArg(probability(0.5) ? 1 : 2)
-    }
-
-    assert(args.count == 4)
-    return (args[0], args[1], args[2], args[3])
+    assert(argumentLists.count == 4)
+    return (argumentLists[0], argumentLists[1], argumentLists[2], argumentLists[3])
 }
 
 private func forceCompilationGenerator(_ generatorName: String, optimizeName: String) -> CodeGenerator {
