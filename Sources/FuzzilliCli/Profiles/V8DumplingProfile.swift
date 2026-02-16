@@ -91,6 +91,25 @@ let v8DumplingProfile = Profile(
                         };
                     }();
                     Math.random = rng;
+
+                    if (typeof Temporal !== 'undefined' && Temporal.Now) {
+                        const fixedInstant = Temporal.Instant.fromEpochMilliseconds(FIXED_TIME);
+
+                        Temporal.Now.instant = () => fixedInstant;
+
+                        // Shim Zoned/Plain methods to use the fixed instant
+                        Temporal.Now.zonedDateTimeISO = (tzLike) =>
+                            fixedInstant.toZonedDateTimeISO(tzLike || Temporal.Now.timeZoneId());
+
+                        Temporal.Now.plainDateTimeISO = (tzLike) =>
+                            fixedInstant.toZonedDateTimeISO(tzLike || Temporal.Now.timeZoneId()).toPlainDateTime();
+
+                        Temporal.Now.plainDateISO = (tzLike) =>
+                            fixedInstant.toZonedDateTimeISO(tzLike || Temporal.Now.timeZoneId()).toPlainDate();
+
+                        Temporal.Now.plainTimeISO = (tzLike) =>
+                            fixedInstant.toZonedDateTimeISO(tzLike || Temporal.Now.timeZoneId()).toPlainTime();
+                    }
                 })();
                 // --- End Determinism Shim ---
                 """,
