@@ -144,6 +144,12 @@ public class ProgramBuilder {
     // Runtime data that can be shared between different stubs within a CodeGenerator.
     var runtimeData = GeneratorRuntimeData()
 
+    ///
+    /// Adoption of variables from a different program.
+    /// Required when copying instructions between programs.
+    ///
+    private var varMaps = [VariableMap<Variable>]()
+
     /// Stack of active switch blocks.
     private var activeSwitchBlocks = Stack<SwitchBlock>()
 
@@ -210,8 +216,13 @@ public class ProgramBuilder {
         jsTyper.reset()
         activeObjectLiterals.removeAll()
         activeClassDefinitions.removeAll()
+        activeSwitchBlocks.removeAll()
+        activeWasmModule = nil
+        argumentGenerationSignature.removeAll()
+        argumentGenerationVariableBudget.removeAll()
         buildLog?.reset()
         runtimeData.reset()
+        varMaps.removeAll()
     }
 
     /// Finalizes and returns the constructed program, then resets this builder so it can be reused for building another program.
@@ -1394,12 +1405,6 @@ public class ProgramBuilder {
 
         return argumentTypes
     }
-
-    ///
-    /// Adoption of variables from a different program.
-    /// Required when copying instructions between programs.
-    ///
-    private var varMaps = [VariableMap<Variable>]()
 
     /// Prepare for adoption of variables from another program.
     ///
