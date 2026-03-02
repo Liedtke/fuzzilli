@@ -34,7 +34,7 @@ jobs:
       - name: Install protobuf
         # Install protoc so the presubmit can also validate the generated *.pb.swift files.
         if: ${{ matrix.os == 'ubuntu-latest' && matrix.kind == 'debug' }}
-        run: sudo apt install -y protobuf-compiler --fix-missing
+        run: sudo apt update && sudo apt install -y protobuf-compiler
       - name: Install Node.js dependencies for Compiler/Parser tests
         working-directory: ./Sources/Fuzzilli/Compiler/Parser
         run: npm install
