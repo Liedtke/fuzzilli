@@ -929,8 +929,9 @@ public struct JSTyper: Analyzer {
                 let signature = type(of: instr.input(0)).wasmFunctionSignatureDefSignature
                 wasmTypeBeginBlock(instr, signature)
             case .endWasmFunction(_):
-                let signature = type(of: instr.input(0)).wasmFunctionSignatureDefSignature
-                setType(of: instr.output, to: .wasmFunctionDef(signature))
+                let signatureType = type(of: instr.input(0))
+                let signature = signatureType.wasmFunctionSignatureDefSignature
+                setType(of: instr.output, to: .wasmFunctionDef(signatureType))
                 dynamicObjectGroupManager.addWasmFunction(
                     withSignature: ProgramBuilder.convertWasmSignatureToJsSignature(signature),
                     forDefinition: instr, forVariable: instr.output)

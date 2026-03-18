@@ -4577,27 +4577,25 @@ public class ProgramBuilder {
         }
 
         @discardableResult
-        public func wasmCallDirect(
-            signature: WasmSignature, function: Variable, functionArgs: [Variable]
-        ) -> [Variable] {
+        public func wasmCallDirect(function: Variable, functionArgs: [Variable]) -> [Variable] {
+            let signature = b.type(of: function).wasmFunctionDefSignature!
             return Array(
                 b.emit(
                     WasmCallDirect(
                         parameterCount: signature.parameterTypes.count,
                         outputCount: signature.outputTypes.count),
                     withInputs: [function] + functionArgs,
-                    types: [.wasmFunctionDef(signature)] + signature.parameterTypes
+                    types: [.wasmFunctionDef()] + signature.parameterTypes
                 ).outputs)
         }
 
-        public func wasmReturnCallDirect(
-            signature: WasmSignature, function: Variable, functionArgs: [Variable]
-        ) {
+        public func wasmReturnCallDirect(function: Variable, functionArgs: [Variable]) {
+            let signature = b.type(of: function).wasmFunctionDefSignature!
             assert(self.signature.outputTypes == signature.outputTypes)
             b.emit(
                 WasmReturnCallDirect(parameterCount: signature.parameterTypes.count),
                 withInputs: [function] + functionArgs,
-                types: [.wasmFunctionDef(signature)] + signature.parameterTypes)
+                types: [.wasmFunctionDef()] + signature.parameterTypes)
         }
 
         public func wasmReturnCallIndirect(

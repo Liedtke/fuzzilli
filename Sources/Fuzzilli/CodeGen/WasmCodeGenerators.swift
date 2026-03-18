@@ -929,9 +929,7 @@ public let WasmCodeGenerators: [CodeGenerator] = [
         let functionArgs = b.randomWasmArguments(forWasmSignature: signature)
         guard let functionArgs else { return }
         let function = b.currentWasmModule.currentWasmFunction
-        function.wasmCallDirect(
-            signature: signature, function: functionVar,
-            functionArgs: functionArgs)
+        function.wasmCallDirect(function: functionVar, functionArgs: functionArgs)
     },
 
     CodeGenerator("WasmReturnCallDirectGenerator", inContext: .single(.wasmFunction)) {
@@ -949,9 +947,7 @@ public let WasmCodeGenerators: [CodeGenerator] = [
         let signature = b.type(of: functionVar).wasmFunctionDefSignature!
         let functionArgs = b.randomWasmArguments(forWasmSignature: signature)
         guard let functionArgs else { return }
-        function.wasmReturnCallDirect(
-            signature: signature, function: functionVar,
-            functionArgs: functionArgs)
+        function.wasmReturnCallDirect(function: functionVar, functionArgs: functionArgs)
     },
 
     CodeGenerator(

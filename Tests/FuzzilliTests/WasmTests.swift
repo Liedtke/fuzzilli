@@ -1126,11 +1126,9 @@ class WasmFoundationTests: XCTestCase {
 
             wasmModule.addWasmFunction(with: [.wasmi32] => [.wasmi32]) { function, label, params in
                 let callResult = function.wasmCallDirect(
-                    signature: [.wasmi32, .wasmi32] => [.wasmi32], function: callee,
-                    functionArgs: [params[0], function.consti32(1)])
+                    function: callee, functionArgs: [params[0], function.consti32(1)])
                 let multiResult = function.wasmCallDirect(
-                    signature: [] => [.wasmi32, .wasmi32], function: calleeMultiResult,
-                    functionArgs: [])
+                    function: calleeMultiResult, functionArgs: [])
                 let sum1 = function.wasmi32BinOp(multiResult[0], multiResult[1], binOpKind: .Add)
                 return [function.wasmi32BinOp(sum1, callResult[0], binOpKind: .Add)]
             }
@@ -1166,8 +1164,7 @@ class WasmFoundationTests: XCTestCase {
 
             wasmModule.addWasmFunction(with: [] => [.wasmi32, .wasmi32]) {
                 function, label, params in
-                function.wasmReturnCallDirect(
-                    signature: [] => [.wasmi32, .wasmi32], function: callee, functionArgs: [])
+                function.wasmReturnCallDirect(function: callee, functionArgs: [])
                 return [function.consti32(-1), function.consti32(-1)]
             }
         }
@@ -5205,8 +5202,7 @@ class WasmFoundationTests: XCTestCase {
                     function.wasmBuildTryTable(
                         with: [] => [], args: [tagi32, catchLabel], catches: [.NoRef]
                     ) { _, _ in
-                        function.wasmCallDirect(
-                            signature: [.wasmi32] => [], function: callee, functionArgs: args)
+                        function.wasmCallDirect(function: callee, functionArgs: args)
                         return []
                     }
                     return [function.consti32(-1)]
@@ -5361,8 +5357,7 @@ class WasmFoundationTests: XCTestCase {
             // Outer function that is supposed to call callee.
             wasmModule.addWasmFunction(with: [.wasmi32] => [.wasmi32]) { function, label, args in
                 // This direct call accidentally got wrongly lifted to calling the imported js function (printMessage).
-                function.wasmCallDirect(
-                    signature: [.wasmi32] => [], function: callee, functionArgs: args)
+                function.wasmCallDirect(function: callee, functionArgs: args)
                 function.wasmReturn(function.consti32(42))
                 // This call is unreachable and only exists here to trigger the import of the printMessage function.
                 function.wasmJsCall(

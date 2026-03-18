@@ -280,12 +280,12 @@ public struct ILType: Hashable {
             withWasmType: wasmTableType)
     }
 
-    public static func wasmFunctionDef(_ signature: WasmSignature? = nil) -> ILType {
+    public static func wasmFunctionDef(_ signatureType: ILType? = nil) -> ILType {
         return ILType(
             definiteType: .wasmFunctionDef,
             ext: TypeExtension(
                 properties: Set(), methods: Set(), signature: nil,
-                wasmExt: WasmFunctionDefinition(signature)))
+                wasmExt: WasmFunctionDefinition(signatureType)))
     }
 
     //
@@ -1486,24 +1486,34 @@ public class WasmTypeExtension: Hashable {
 }
 
 public class WasmFunctionDefinition: WasmTypeExtension {
-    let signature: WasmSignature?
+    let signatureType: ILType?
 
     override func isEqual(to other: WasmTypeExtension) -> Bool {
         guard let other = other as? WasmFunctionDefinition else { return false }
-        return self.signature == other.signature
+        return self.signatureType == other.signatureType
     }
 
     override public func hash(into hasher: inout Hasher) {
-        hasher.combine(signature)
+        hasher.combine(signatureType)
     }
 
     override func subsumes(_ other: WasmTypeExtension) -> Bool {
         guard let other = other as? WasmFunctionDefinition else { return false }
-        return signature == nil || signature == other.signature
+        return signatureType == nil || signatureType == other.signatureType
     }
 
-    init(_ signature: WasmSignature?) {
-        self.signature = signature
+    init(_ signatureType: ILType?) {
+        assert(
+            signatureType == nil
+                || (signatureType!.wasmTypeDefinition?.description as? WasmSignatureTypeDescription)?
+                    .signature != nil
+        )
+        self.signatureType = signatureType
+    }
+
+    // TODO(mliedtke): Is this needed and are its usages OK when we move to full wasm-gc types?
+    var signature: WasmSignature? {
+        (signatureType?.wasmTypeDefinition?.description as? WasmSignatureTypeDescription)?.signature
     }
 }
 

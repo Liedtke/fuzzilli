@@ -236,8 +236,7 @@ public let ProgramTemplates = [
                 if let arguments = b.randomWasmArguments(forWasmSignature: calleeSig) {
                     if Bool.random() {
                         function.wasmReturnCallDirect(
-                            signature: calleeSig, function: callees.randomElement()!,
-                            functionArgs: arguments)
+                            function: callees.randomElement()!, functionArgs: arguments)
                     } else {
                         let calleeIndex =
                             useTable64

@@ -1586,6 +1586,13 @@ class TypeSystemTests: XCTestCase {
         .undefined, .integer, .float, .string, .boolean, .bigint, .regexp,
     ]
 
+    static let wasmSigI32I64 = ILType.wasmTypeDef(
+        description: WasmSignatureTypeDescription(
+            signature: [.wasmi32] => [.wasmi64], typeGroupIndex: 0))
+    static let wasmSigExternRefExternRef = ILType.wasmTypeDef(
+        description: WasmSignatureTypeDescription(
+            signature: [.wasmExternRef()] => [.wasmExternRef()], typeGroupIndex: 0))
+
     // A set of different types used by various tests.
     // TODO(cffsmith): Test and adjust types with a WasmTypeExtension.
     let typeSuite: [ILType] =
@@ -1681,9 +1688,10 @@ class TypeSystemTests: XCTestCase {
             .wasmf32,
             .wasmi64,
             .wasmf64,
-            .wasmFunctionDef([.wasmi32] => [.wasmi64]),
-            .wasmFunctionDef([.wasmf32] => [.wasmi32]),
-            .wasmFunctionDef([.wasmExternRef()] => [.wasmExternRef()]),
+            wasmSigI32I64,
+            wasmSigExternRefExternRef,
+            .wasmFunctionDef(wasmSigI32I64),
+            .wasmFunctionDef(wasmSigExternRefExternRef),
             .wasmMemory(limits: Limits(min: 10)),
             .wasmMemory(limits: Limits(min: 10, max: 20)),
         ] + ILType.allNullableAbstractWasmRefTypes()
