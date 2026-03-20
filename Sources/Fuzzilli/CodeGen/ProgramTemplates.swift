@@ -211,27 +211,35 @@ public let ProgramTemplates = [
 
         let calleeSig = b.randomWasmSignature()
         let mainSig = b.randomWasmSignature().parameterTypes => calleeSig.outputTypes
+        let wasmTypeGroup = b.wasmDefineTypeGroup {
+            [
+                b.wasmDefineSignatureType(signature: calleeSig, indexTypes: []),
+                b.wasmDefineSignatureType(signature: mainSig, indexTypes: []),
+            ]
+        }
+        let calleeSigDef = wasmTypeGroup[0]
+        let mainSigDef = wasmTypeGroup[1]
+
         let useTable64 = Bool.random()
         let numCallees = Int.random(in: 1...5)
 
         let module = b.buildWasmModule { wasmModule in
             let callees = (0..<numCallees).map { _ in
-                wasmModule.addWasmFunction(with: calleeSig) { function, label, params in
+                wasmModule.addWasmFunction(signature: calleeSigDef) { function, label, params in
                     b.build(n: 10)
                     return calleeSig.outputTypes.map(function.findOrGenerateWasmVar)
                 }
             }
 
+            let calleesWithSignature = callees.flatMap { [$0, calleeSigDef] }
             let table = wasmModule.addTable(
                 elementType: .wasmFuncRef(),
                 minSize: 10,
-                definedEntries: callees.enumerated().map { (index, callee) in
-                    .init(indexInTable: index, signature: calleeSig)
-                },
-                definedEntryValues: callees,
+                definedEntryValues: calleesWithSignature,
                 isTable64: useTable64)
 
-            let main = wasmModule.addWasmFunction(with: mainSig) { function, label, params in
+            let main = wasmModule.addWasmFunction(signature: mainSigDef) {
+                function, label, params in
                 b.build(n: 20)
                 if let arguments = b.randomWasmArguments(forWasmSignature: calleeSig) {
                     if Bool.random() {

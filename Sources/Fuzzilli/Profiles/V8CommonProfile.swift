@@ -669,6 +669,8 @@ public let LazyDeoptFuzzer = ProgramTemplate("LazyDeoptFuzzer") { b in
     b.callFunction(realFct, withArgs: args, guard: guardCalls)
 }
 
+/*
+FIXME: Adapt this template.
 public let WasmDeoptFuzzer = WasmProgramTemplate("WasmDeoptFuzzer") { b in
     b.buildPrefix()
     b.build(n: 10)
@@ -730,6 +732,7 @@ public let WasmDeoptFuzzer = WasmProgramTemplate("WasmDeoptFuzzer") { b in
         b.callFunction(mainFct, withArgs: args)
     }
 }
+*/
 
 public let WasmInJsInliningFuzzer = WasmProgramTemplate("WasmInJsInliningFuzzer") { b in
     b.buildPrefix()

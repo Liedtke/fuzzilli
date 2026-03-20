@@ -2762,7 +2762,8 @@ class CreateWasmTable: JsOperation {
 
     init(elementType: ILType, limits: Limits, isTable64: Bool) {
         self.tableType = WasmTableType(
-            elementType: elementType, limits: limits, isTable64: isTable64, knownEntries: [])
+            elementType: elementType, limits: limits, isTable64: isTable64, knownEntrySignatures: []
+        )
         super.init(numOutputs: 1, attributes: [.isMutable], requiredContext: [.javascript])
     }
 }

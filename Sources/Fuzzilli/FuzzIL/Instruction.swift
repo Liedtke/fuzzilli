@@ -1364,12 +1364,6 @@ extension Instruction: ProtobufConvertible {
                     if let maxSize = op.limits.max {
                         $0.maxSize = Int64(maxSize)
                     }
-                    $0.definedEntries = op.definedEntries.map { entry in
-                        Fuzzilli_Protobuf_IndexedWasmSignature.with {
-                            $0.index = Int64(entry.indexInTable)
-                            $0.signature = WasmSignatureToProto(entry.signature)
-                        }
-                    }
                     $0.isTable64 = op.isTable64
                 }
             case .wasmDefineElementSegment(let op):
@@ -2541,11 +2535,7 @@ extension Instruction: ProtobufConvertible {
             op = WasmDefineTable(
                 elementType: WasmTypeEnumToILType(p.elementType),
                 limits: Limits(min: Int(p.minSize), max: p.hasMaxSize ? Int(p.maxSize) : nil),
-                definedEntries: p.definedEntries.map { entry in
-                    WasmTableType.IndexInTableAndWasmSignature(
-                        indexInTable: Int(entry.index),
-                        signature: WasmSignatureFromProto(entry.signature))
-                },
+                initializedSlotCount: (inouts.count - 1) / 2,
                 isTable64: p.isTable64)
         case .wasmDefineElementSegment(let p):
             op = WasmDefineElementSegment(size: p.size)

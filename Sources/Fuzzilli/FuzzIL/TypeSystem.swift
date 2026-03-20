@@ -708,9 +708,14 @@ public struct ILType: Hashable {
         return self.definiteType == .wasmFunctionDef
     }
 
+    public var wasmFunctionDef: WasmFunctionDefinition? {
+        return wasmType as? WasmFunctionDefinition
+    }
+
     public var wasmFunctionDefSignature: WasmSignature? {
         assert(self.definiteType == .wasmFunctionDef)
-        return (wasmType as! WasmFunctionDefinition).signature
+        return (wasmType as? WasmFunctionDefinition)?.signatureType?
+            .wasmFunctionSignatureDefSignature
     }
 
     public var wasmFunctionSignatureDefSignature: WasmSignature {
@@ -1988,43 +1993,32 @@ public class WasmElementSegmentType: WasmTypeExtension {
 }
 
 public class WasmTableType: WasmTypeExtension {
-    public struct IndexInTableAndWasmSignature: Hashable {
-        let indexInTable: Int
-        let signature: WasmSignature
-
-        public init(indexInTable: Int, signature: WasmSignature) {
-            self.indexInTable = indexInTable
-            self.signature = signature
-        }
-    }
-
     let elementType: ILType
     let limits: Limits
     let isTable64: Bool
-    let knownEntries: [IndexInTableAndWasmSignature]
+    let knownEntrySignatures: [ILType]
 
     override func isEqual(to other: WasmTypeExtension) -> Bool {
         guard let other = other as? WasmTableType else { return false }
-        return self.elementType == other.elementType && self.limits == other.limits
-            && self.isTable64 == other.isTable64 && self.knownEntries == other.knownEntries
+        return self.elementType == other.elementType
+            && self.limits == other.limits
+            && self.isTable64 == other.isTable64
+            && self.knownEntrySignatures == other.knownEntrySignatures
     }
 
     override public func hash(into hasher: inout Hasher) {
         hasher.combine(elementType)
         hasher.combine(limits)
         hasher.combine(isTable64)
-        hasher.combine(knownEntries)
+        hasher.combine(knownEntrySignatures)
     }
 
-    init(
-        elementType: ILType, limits: Limits, isTable64: Bool,
-        knownEntries: [IndexInTableAndWasmSignature]
-    ) {
+    init(elementType: ILType, limits: Limits, isTable64: Bool, knownEntrySignatures: [ILType]) {
         // TODO(manoskouk): Assert table type is reference type.
         self.elementType = elementType
         self.limits = limits
         self.isTable64 = isTable64
-        self.knownEntries = knownEntries
+        self.knownEntrySignatures = knownEntrySignatures
     }
 }
 

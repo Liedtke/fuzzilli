@@ -809,7 +809,7 @@ class WasmFoundationTests: XCTestCase {
             .wasmTable(
                 wasmTableType: WasmTableType(
                     elementType: .wasmExternRef(), limits: Limits(min: 5, max: 25),
-                    isTable64: isTable64, knownEntries: [])))
+                    isTable64: isTable64, knownEntrySignatures: [])))
 
         let object = b.createObject(with: ["a": b.loadInt(41), "b": b.loadInt(42)])
 
@@ -869,19 +869,19 @@ class WasmFoundationTests: XCTestCase {
             b.doReturn(b.loadBigInt(11))
         }
 
+        var wasmSigDef: Variable!
+        var jsSigDef: Variable!
         let module = b.buildWasmModule { wasmModule in
-            let wasmFunction = wasmModule.addWasmFunction(with: [.wasmi32] => [.wasmi32]) {
+            wasmSigDef = b.wasmDefineAdHocSignatureType(signature: [.wasmi32] => [.wasmi32])
+            let wasmFunction = wasmModule.addWasmFunction(signature: wasmSigDef) {
                 function, label, params in
                 [function.wasmi32BinOp(params[0], function.consti32(1), binOpKind: .Add)]
             }
+            jsSigDef = b.wasmDefineAdHocSignatureType(signature: [] => [.wasmi64])
             wasmModule.addTable(
                 elementType: .wasmFuncRef(),
                 minSize: 10,
-                definedEntries: [
-                    .init(indexInTable: 0, signature: [.wasmi32] => [.wasmi32]),
-                    .init(indexInTable: 1, signature: [] => [.wasmi64]),
-                ],
-                definedEntryValues: [wasmFunction, jsFunction],
+                definedEntryValues: [wasmFunction, wasmSigDef, jsFunction, jsSigDef],
                 isTable64: isTable64)
         }
 
@@ -902,10 +902,9 @@ class WasmFoundationTests: XCTestCase {
         let tableType = ILType.wasmTable(
             wasmTableType: WasmTableType(
                 elementType: .wasmFuncRef(), limits: Limits(min: 10), isTable64: isTable64,
-                knownEntries: [
-                    .init(indexInTable: 0, signature: [.wasmi32] => [.wasmi32]),
-                    .init(indexInTable: 1, signature: [] => [.wasmi64]),
-
+                knownEntrySignatures: [
+                    b.type(of: wasmSigDef),
+                    b.type(of: jsSigDef),
                 ]))
         XCTAssertEqual(b.type(of: table), tableType)
 
@@ -948,19 +947,20 @@ class WasmFoundationTests: XCTestCase {
             b.doReturn(b.binary(params[0], b.loadBigInt(42), with: .Add))
         }
 
+        var wasmSigDef: Variable!
+        var jsSigDef: Variable!
         let module = b.buildWasmModule { wasmModule in
-            let wasmFunction = wasmModule.addWasmFunction(with: [.wasmi64] => [.wasmi64, .wasmi64])
-            { function, label, params in
+            wasmSigDef = b.wasmDefineAdHocSignatureType(
+                signature: [.wasmi64] => [.wasmi64, .wasmi64])
+            let wasmFunction = wasmModule.addWasmFunction(signature: wasmSigDef) {
+                function, label, params in
                 return [params[0], function.consti64(1)]
             }
+            jsSigDef = b.wasmDefineAdHocSignatureType(signature: [.wasmi64] => [.wasmi64])
             let table = wasmModule.addTable(
                 elementType: .wasmFuncRef(),
                 minSize: 10,
-                definedEntries: [
-                    .init(indexInTable: 0, signature: [.wasmi64] => [.wasmi64, .wasmi64]),
-                    .init(indexInTable: 1, signature: [.wasmi64] => [.wasmi64]),
-                ],
-                definedEntryValues: [wasmFunction, jsFunction],
+                definedEntryValues: [wasmFunction, wasmSigDef, jsFunction, jsSigDef],
                 isTable64: false)
             wasmModule.addWasmFunction(with: [.wasmi32, .wasmi64] => [.wasmi64]) {
                 fn, label, params in
@@ -1009,19 +1009,20 @@ class WasmFoundationTests: XCTestCase {
             b.doReturn(b.binary(params[0], b.loadBigInt(42), with: .Add))
         }
 
+        var wasmSigDef: Variable!
+        var jsSigDef: Variable!
         let module = b.buildWasmModule { wasmModule in
-            let wasmFunction = wasmModule.addWasmFunction(with: [.wasmi64] => [.wasmi64, .wasmi64])
-            { function, label, params in
+            wasmSigDef = b.wasmDefineAdHocSignatureType(
+                signature: [.wasmi64] => [.wasmi64, .wasmi64])
+            let wasmFunction = wasmModule.addWasmFunction(signature: wasmSigDef) {
+                function, label, params in
                 return [params[0], function.consti64(1)]
             }
+            jsSigDef = b.wasmDefineAdHocSignatureType(signature: [.wasmi64] => [.wasmi64])
             wasmModule.addTable(
                 elementType: .wasmFuncRef(),
                 minSize: 10,
-                definedEntries: [
-                    .init(indexInTable: 0, signature: [.wasmi64] => [.wasmi64, .wasmi64]),
-                    .init(indexInTable: 1, signature: [.wasmi64] => [.wasmi64]),
-                ],
-                definedEntryValues: [wasmFunction, jsFunction],
+                definedEntryValues: [wasmFunction, wasmSigDef, jsFunction, jsSigDef],
                 isTable64: false)
         }
 
@@ -1029,9 +1030,9 @@ class WasmFoundationTests: XCTestCase {
         let tableType = ILType.wasmTable(
             wasmTableType: WasmTableType(
                 elementType: .wasmFuncRef(), limits: Limits(min: 10), isTable64: false,
-                knownEntries: [
-                    .init(indexInTable: 0, signature: [.wasmi64] => [.wasmi64, .wasmi64]),
-                    .init(indexInTable: 1, signature: [.wasmi64] => [.wasmi64]),
+                knownEntrySignatures: [
+                    b.type(of: wasmSigDef),
+                    b.type(of: jsSigDef),
                 ]))
         XCTAssertEqual(b.type(of: table), tableType)
         let module2 = b.buildWasmModule { wasmModule in
@@ -1070,10 +1071,9 @@ class WasmFoundationTests: XCTestCase {
         let reexportedTableType = ILType.wasmTable(
             wasmTableType: WasmTableType(
                 elementType: .wasmFuncRef(), limits: Limits(min: 10), isTable64: false,
-                knownEntries: [
-                    .init(indexInTable: 0, signature: [.wasmi64] => [.wasmi64, .wasmi64]),
-                    .init(indexInTable: 1, signature: [.wasmi64] => [.wasmi64]),
-
+                knownEntrySignatures: [
+                    b.type(of: wasmSigDef),
+                    b.type(of: jsSigDef),
                 ]))
         XCTAssertEqual(b.type(of: reexportedTable), reexportedTableType)
 
@@ -1190,19 +1190,20 @@ class WasmFoundationTests: XCTestCase {
             b.doReturn(b.binary(params[0], b.loadBigInt(42), with: .Add))
         }
 
+        var wasmSigDef: Variable!
+        var jsSigDef: Variable!
         let module = b.buildWasmModule { wasmModule in
-            let wasmFunction = wasmModule.addWasmFunction(with: [.wasmi64] => [.wasmi64, .wasmi64])
-            { function, label, params in
+            wasmSigDef = b.wasmDefineAdHocSignatureType(
+                signature: [.wasmi64] => [.wasmi64, .wasmi64])
+            let wasmFunction = wasmModule.addWasmFunction(signature: wasmSigDef) {
+                function, label, params in
                 return [params[0], function.consti64(1)]
             }
+            jsSigDef = b.wasmDefineAdHocSignatureType(signature: [.wasmi64] => [.wasmi64])
             let table = wasmModule.addTable(
                 elementType: .wasmFuncRef(),
                 minSize: 10,
-                definedEntries: [
-                    .init(indexInTable: 0, signature: [.wasmi64] => [.wasmi64, .wasmi64]),
-                    .init(indexInTable: 1, signature: [.wasmi64] => [.wasmi64]),
-                ],
-                definedEntryValues: [wasmFunction, jsFunction],
+                definedEntryValues: [wasmFunction, wasmSigDef, jsFunction, jsSigDef],
                 isTable64: false)
             wasmModule.addWasmFunction(with: [.wasmi32, .wasmi64] => [.wasmi64, .wasmi64]) {
                 fn, label, params in
@@ -5477,13 +5478,11 @@ class WasmFoundationTests: XCTestCase {
                 module.addTable(
                     elementType: .wasmFuncRef(),
                     minSize: 10,
-                    definedEntries: [],
                     definedEntryValues: [],
                     isTable64: isTable64)
                 let table2 = module.addTable(
                     elementType: .wasmFuncRef(),
                     minSize: 10,
-                    definedEntries: [],
                     definedEntryValues: [],
                     isTable64: isTable64)
                 module.addElementSegment(elements: [])
@@ -5541,17 +5540,13 @@ class WasmFoundationTests: XCTestCase {
                 let table1 = module.addTable(
                     elementType: .wasmFuncRef(),
                     minSize: 10,
-                    definedEntries: [],
                     definedEntryValues: [],
                     isTable64: isTable64)
+                let sigDef = b.wasmDefineAdHocSignatureType(signature: [] => [.wasmi64])
                 let table2 = module.addTable(
                     elementType: .wasmFuncRef(),
                     minSize: 10,
-                    definedEntries: (0..<4).map {
-                        WasmTableType.IndexInTableAndWasmSignature.init(
-                            indexInTable: $0, signature: [] => [.wasmi64])
-                    },
-                    definedEntryValues: [f3, f3, f1, f2],
+                    definedEntryValues: [f3, sigDef, f3, sigDef, f1, sigDef, f2, sigDef],
                     isTable64: isTable64)
 
                 module.addWasmFunction(with: [] => [.wasmi64, .wasmi64]) { f, _, _ in

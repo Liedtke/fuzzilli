@@ -809,24 +809,30 @@ public struct JSTyper: Analyzer {
                     withType: type, forDefinition: instr, forVariable: instr.output)
                 setType(of: instr.output, to: type)
             case .wasmDefineTable(let op):
+                let knownSignatures = instr.inputs.enumerated().filter { $0.offset % 2 == 1 }.map {
+                    type(of: $0.element)
+                }
                 setType(
                     of: instr.output,
                     to: .wasmTable(
                         wasmTableType: WasmTableType(
                             elementType: op.elementType, limits: op.limits, isTable64: op.isTable64,
-                            knownEntries: op.definedEntries)))
+                            knownEntrySignatures: knownSignatures)))
                 dynamicObjectGroupManager.addWasmTable(
                     withType: type(of: instr.output), forDefinition: instr,
                     forVariable: instr.output)
                 // Also re-export all functions that we now import through the activeElementSection
-                for (idx, entry) in op.definedEntries.enumerated() {
-                    let definingInstruction = defUseAnalyzer.definition(of: instr.input(idx))
+                var i = 0
+                while i < instr.inputs.count {
+                    let fct = instr.input(i)
+                    let definingInstruction = defUseAnalyzer.definition(of: fct)
+                    let signature = type(of: instr.input(i + 1)).wasmFunctionSignatureDefSignature
                     // TODO(cffsmith): Once we change the way we track signatures, we should also store the JS Signature here if we have one. The table might contain JS functions but we lose that signature in the entries. Which is why we convert back into JS Signatures here.
-                    let jsSignature = ProgramBuilder.convertWasmSignatureToJsSignature(
-                        entry.signature)
+                    let jsSignature = ProgramBuilder.convertWasmSignatureToJsSignature(signature)
                     dynamicObjectGroupManager.addWasmFunction(
                         withSignature: jsSignature, forDefinition: definingInstruction,
-                        forVariable: instr.input(idx))
+                        forVariable: fct)
+                    i += 2
                 }
             case .wasmDefineElementSegment(let op):
                 setType(of: instr.output, to: .wasmElementSegment(segmentLength: Int(op.size)))
@@ -2180,7 +2186,7 @@ public struct JSTyper: Analyzer {
                 .wasmTable(
                     wasmTableType: WasmTableType(
                         elementType: op.tableType.elementType, limits: op.tableType.limits,
-                        isTable64: op.tableType.isTable64, knownEntries: [])))
+                        isTable64: op.tableType.isTable64, knownEntrySignatures: [])))
 
         case .createWasmJSTag(_):
             set(

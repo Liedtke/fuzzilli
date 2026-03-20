@@ -905,12 +905,10 @@ public class FuzzILLifter: Lifter {
             w.emit("\(output()) <- WasmDefineGlobal \(op.wasmGlobal)")
 
         case .wasmDefineTable(let op):
-            let entries = op.definedEntries.enumerated().map { index, entry in
-                "\(entry) : \(input(index))"
-            }.joined(separator: ", ")
+            let inputs = instr.inputs.map(lift).joined(separator: ", ")
             let isTable64Str = op.isTable64 ? ", table64" : ""
             w.emit(
-                "\(output()) <- WasmDefineTable \(op.elementType)\(isTable64Str), (\(op.limits.min), \(String(describing: op.limits.max))), [\(entries)]"
+                "\(output()) <- WasmDefineTable \(op.elementType)\(isTable64Str), (\(op.limits.min), \(String(describing: op.limits.max))), [\(inputs)]"
             )
 
         case .wasmDefineElementSegment(_):

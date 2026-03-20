@@ -800,24 +800,21 @@ final class WasmDefineTable: WasmOperation {
 
     let elementType: ILType
     let limits: Limits
-    let definedEntries: [WasmTableType.IndexInTableAndWasmSignature]
+    let initializedSlotCount: Int
     let isTable64: Bool
 
-    init(
-        elementType: ILType, limits: Limits,
-        definedEntries: [WasmTableType.IndexInTableAndWasmSignature], isTable64: Bool
-    ) {
+    init(elementType: ILType, limits: Limits, initializedSlotCount: Int, isTable64: Bool) {
         self.elementType = elementType
         self.limits = limits
+        self.initializedSlotCount = initializedSlotCount
         self.isTable64 = isTable64
-        self.definedEntries = definedEntries
 
         // TODO(manoskouk): Find a way to define non-function tables with initializers.
         let isWasmFuncRef = elementType == .wasmFuncRef()
-        assert(isWasmFuncRef || definedEntries.isEmpty)
+        assert(isWasmFuncRef || initializedSlotCount == 0)
 
         super.init(
-            numInputs: isWasmFuncRef ? definedEntries.count : 0,
+            numInputs: initializedSlotCount * 2,
             numOutputs: 1,
             attributes: [.isMutable],
             requiredContext: [.wasm])

@@ -4738,29 +4738,6 @@ public struct Fuzzilli_Protobuf_WasmSignature: Sendable {
   public init() {}
 }
 
-public struct Fuzzilli_Protobuf_IndexedWasmSignature: Sendable {
-  // SwiftProtobuf.Message conformance is added in an extension below. See the
-  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
-  // methods supported on all messages.
-
-  public var index: Int64 = 0
-
-  public var signature: Fuzzilli_Protobuf_WasmSignature {
-    get {_signature ?? Fuzzilli_Protobuf_WasmSignature()}
-    set {_signature = newValue}
-  }
-  /// Returns true if `signature` has been explicitly set.
-  public var hasSignature: Bool {self._signature != nil}
-  /// Clears the value of `signature`. Subsequent reads from it will return its default value.
-  public mutating func clearSignature() {self._signature = nil}
-
-  public var unknownFields = SwiftProtobuf.UnknownStorage()
-
-  public init() {}
-
-  fileprivate var _signature: Fuzzilli_Protobuf_WasmSignature? = nil
-}
-
 public struct Fuzzilli_Protobuf_WasmDefineTable: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
@@ -4785,8 +4762,6 @@ public struct Fuzzilli_Protobuf_WasmDefineTable: Sendable {
   public var hasMaxSize: Bool {self._maxSize != nil}
   /// Clears the value of `maxSize`. Subsequent reads from it will return its default value.
   public mutating func clearMaxSize() {self._maxSize = nil}
-
-  public var definedEntries: [Fuzzilli_Protobuf_IndexedWasmSignature] = []
 
   public var isTable64: Bool = false
 
@@ -12818,48 +12793,9 @@ extension Fuzzilli_Protobuf_WasmSignature: SwiftProtobuf.Message, SwiftProtobuf.
   }
 }
 
-extension Fuzzilli_Protobuf_IndexedWasmSignature: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  public static let protoMessageName: String = _protobuf_package + ".IndexedWasmSignature"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}index\0\u{1}signature\0")
-
-  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
-    while let fieldNumber = try decoder.nextFieldNumber() {
-      // The use of inline closures is to circumvent an issue where the compiler
-      // allocates stack space for every case branch when no optimizations are
-      // enabled. https://github.com/apple/swift-protobuf/issues/1034
-      switch fieldNumber {
-      case 1: try { try decoder.decodeSingularInt64Field(value: &self.index) }()
-      case 2: try { try decoder.decodeSingularMessageField(value: &self._signature) }()
-      default: break
-      }
-    }
-  }
-
-  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    // The use of inline closures is to circumvent an issue where the compiler
-    // allocates stack space for every if/case branch local when no optimizations
-    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
-    // https://github.com/apple/swift-protobuf/issues/1182
-    if self.index != 0 {
-      try visitor.visitSingularInt64Field(value: self.index, fieldNumber: 1)
-    }
-    try { if let v = self._signature {
-      try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
-    } }()
-    try unknownFields.traverse(visitor: &visitor)
-  }
-
-  public static func ==(lhs: Fuzzilli_Protobuf_IndexedWasmSignature, rhs: Fuzzilli_Protobuf_IndexedWasmSignature) -> Bool {
-    if lhs.index != rhs.index {return false}
-    if lhs._signature != rhs._signature {return false}
-    if lhs.unknownFields != rhs.unknownFields {return false}
-    return true
-  }
-}
-
 extension Fuzzilli_Protobuf_WasmDefineTable: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".WasmDefineTable"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}elementType\0\u{1}minSize\0\u{1}maxSize\0\u{1}definedEntries\0\u{1}isTable64\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}elementType\0\u{1}minSize\0\u{1}maxSize\0\u{2}\u{2}isTable64\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -12870,7 +12806,6 @@ extension Fuzzilli_Protobuf_WasmDefineTable: SwiftProtobuf.Message, SwiftProtobu
       case 1: try { try decoder.decodeSingularMessageField(value: &self._elementType) }()
       case 2: try { try decoder.decodeSingularInt64Field(value: &self.minSize) }()
       case 3: try { try decoder.decodeSingularInt64Field(value: &self._maxSize) }()
-      case 4: try { try decoder.decodeRepeatedMessageField(value: &self.definedEntries) }()
       case 5: try { try decoder.decodeSingularBoolField(value: &self.isTable64) }()
       default: break
       }
@@ -12891,9 +12826,6 @@ extension Fuzzilli_Protobuf_WasmDefineTable: SwiftProtobuf.Message, SwiftProtobu
     try { if let v = self._maxSize {
       try visitor.visitSingularInt64Field(value: v, fieldNumber: 3)
     } }()
-    if !self.definedEntries.isEmpty {
-      try visitor.visitRepeatedMessageField(value: self.definedEntries, fieldNumber: 4)
-    }
     if self.isTable64 != false {
       try visitor.visitSingularBoolField(value: self.isTable64, fieldNumber: 5)
     }
@@ -12904,7 +12836,6 @@ extension Fuzzilli_Protobuf_WasmDefineTable: SwiftProtobuf.Message, SwiftProtobu
     if lhs._elementType != rhs._elementType {return false}
     if lhs.minSize != rhs.minSize {return false}
     if lhs._maxSize != rhs._maxSize {return false}
-    if lhs.definedEntries != rhs.definedEntries {return false}
     if lhs.isTable64 != rhs.isTable64 {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true

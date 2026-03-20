@@ -815,8 +815,7 @@ public let WasmCodeGenerators: [CodeGenerator] = [
         let elementType = ILType.wasmFuncRef()
 
         let definedEntryIndices: [Int]
-        var definedEntries: [WasmTableType.IndexInTableAndWasmSignature] = []
-        var definedEntryValues: [Variable] = []
+        var inputs: [Variable] = []
 
         // For funcref tables, we need to look for functions to populate the entries.
         // These are going to be either wasm function definitions (.wasmFunctionDef()) or JS functions (.function()).
@@ -833,24 +832,30 @@ public let WasmCodeGenerators: [CodeGenerator] = [
                 for index in definedEntryIndices {
                     let value = b.randomVariable(ofType: expectedEntryType)!
                     let actualEntryType = b.type(of: value)
-                    definedEntries.append(
-                        .init(
-                            indexInTable: index,
-                            signature: actualEntryType == .wasmFunctionDef()
-                                ? actualEntryType.wasmFunctionDefSignature!
-                                : ProgramBuilder
-                                    .convertJsSignatureToWasmSignatureDeterministic(
-                                        actualEntryType.signature
-                                            ?? Signature.forUnknownFunction)))
-                    definedEntryValues.append(value)
+                    let signature =
+                        if actualEntryType.Is(.wasmFunctionDef()) {
+                            b.randomVariable(
+                                ofType: actualEntryType.wasmFunctionDef!.signatureType!)!
+                        } else {
+                            // If it isn't a Wasm function (e.g. JS functions), create a signature
+                            // that describes the JSTyper's current type knowledge about this
+                            // function. Note that it is needed to add this extra information to the
+                            // IL as the signature of JS functions are set manually during building
+                            // meaning its type information is lost on subsequent runs.
+                            b.wasmDefineAdHocSignatureType(
+                                signature:
+                                    ProgramBuilder.convertJsSignatureToWasmSignatureDeterministic(
+                                        actualEntryType.signature ?? Signature.forUnknownFunction))
+                        }
+                    inputs.append(value)
+                    inputs.append(signature)
                 }
             }
         }
 
         module.addTable(
             elementType: elementType, minSize: minSize, maxSize: maxSize,
-            definedEntries: definedEntries,
-            definedEntryValues: definedEntryValues, isTable64: probability(0.5))
+            definedEntryValues: inputs, isTable64: probability(0.5))
     },
 
     CodeGenerator("WasmDefineElementSegmentGenerator", inContext: .single(.wasm)) { b in
@@ -901,22 +906,22 @@ public let WasmCodeGenerators: [CodeGenerator] = [
     ) { b, table in
         let tableType = b.type(of: table).wasmTableType!
         if !tableType.elementType.Is(.wasmFuncRef()) { return }
-        guard let indexedSignature = tableType.knownEntries.randomElement()
-        else { return }
+        guard !tableType.knownEntrySignatures.isEmpty else { return }
+        let tableIndex = Int.random(in: 0..<tableType.knownEntrySignatures.count)
 
         let function = b.currentWasmModule.currentWasmFunction
         let indexVar =
             tableType.isTable64
-            ? function.consti64(Int64(indexedSignature.indexInTable))
-            : function.consti32(Int32(indexedSignature.indexInTable))
+            ? function.consti64(Int64(tableIndex))
+            : function.consti32(Int32(tableIndex))
+        let signatureDef = tableType.knownEntrySignatures[tableIndex]
+        let wasmSignature = signatureDef.wasmFunctionSignatureDefSignature
 
-        guard
-            let functionArgs = b.randomWasmArguments(
-                forWasmSignature: indexedSignature.signature)
+        guard let functionArgs = b.randomWasmArguments(forWasmSignature: wasmSignature)
         else { return }
 
         function.wasmCallIndirect(
-            signature: indexedSignature.signature, table: table,
+            signature: wasmSignature, table: table,
             functionArgs: functionArgs, tableIndex: indexVar)
     },
 
@@ -957,22 +962,27 @@ public let WasmCodeGenerators: [CodeGenerator] = [
         let function = b.currentWasmModule.currentWasmFunction
         let tableType = b.type(of: table).wasmTableType!
         if !tableType.elementType.Is(.wasmFuncRef()) { return }
-        guard
-            let indexedSignature =
-                (tableType.knownEntries.filter {
-                    $0.signature.outputTypes == function.signature.outputTypes
-                }.randomElement())
-        else { return }
+
+        let matchingIndices = tableType.knownEntrySignatures.enumerated().compactMap {
+            (index, signatureDef) -> Int? in
+            let wasmSignature = signatureDef.wasmFunctionSignatureDefSignature
+            return wasmSignature.outputTypes == function.signature.outputTypes ? index : nil
+        }
+
+        guard let tableIndex = matchingIndices.randomElement() else { return }
+        let signatureDef = tableType.knownEntrySignatures[tableIndex]
+        let wasmSignature = signatureDef.wasmFunctionSignatureDefSignature
+
         let indexVar =
             tableType.isTable64
-            ? function.consti64(Int64(indexedSignature.indexInTable))
-            : function.consti32(Int32(indexedSignature.indexInTable))
+            ? function.consti64(Int64(tableIndex))
+            : function.consti32(Int32(tableIndex))
         guard
             let functionArgs = b.randomWasmArguments(
-                forWasmSignature: indexedSignature.signature)
+                forWasmSignature: wasmSignature)
         else { return }
         function.wasmReturnCallIndirect(
-            signature: indexedSignature.signature, table: table,
+            signature: wasmSignature, table: table,
             functionArgs: functionArgs, tableIndex: indexVar)
     },
 

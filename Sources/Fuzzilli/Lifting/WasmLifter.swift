@@ -106,7 +106,9 @@ public class WasmLifter {
         // The variable that is associated with this import is later used to pass the variables back to the JavaScript lifter such that it can get the right expressions for the needed imports.
         // Imported functions also have signatures, we need these as we might call a function through two different WasmJSCall instructions.
         // We then cannot distinguish them and we need two different type entries and two different imports.
-        case `import`(type: Export, variable: Variable, signature: WasmSignature?)
+        // TODO(mliedtke): Every usage should use `signatureDef` instead of `signature` to use consistent indices for signatures.
+        case `import`(
+            type: Export, variable: Variable, signature: WasmSignature?, signatureDef: Variable?)
 
         // These accessors below don't look into the imports.
         // This is by design, it allows us to easily traverse the exports array to build the sections without filtering out the imports.
@@ -165,9 +167,11 @@ public class WasmLifter {
             }
         }
 
-        func getImport() -> (type: Self, variable: Variable, signature: WasmSignature?)? {
-            if case .import(let export, let variable, let signature) = self {
-                return (export, variable, signature)
+        func getImport() -> (
+            type: Self, variable: Variable, signature: WasmSignature?, signatureDef: Variable?
+        )? {
+            if case .import(let export, let variable, let signature, let signatureDef) = self {
+                return (export, variable, signature, signatureDef)
             }
             return nil
         }
@@ -175,7 +179,7 @@ public class WasmLifter {
         func getDefInstr() -> Instruction? {
             switch self {
             case .function(_),
-                .import(_, _, _),
+                .import(_, _, _, _),
                 .suspendingObject:
                 return nil
             case .global(let instr),
@@ -217,7 +221,7 @@ public class WasmLifter {
                 WasmLifter.nameOfGlobal(idx)
             case .tag:
                 WasmLifter.nameOfTag(idx)
-            case .import(let exp, _, _):
+            case .import(let exp, _, _, _):
                 "i\(exp.exportName(forIdx: idx))"
             }
         }
@@ -235,7 +239,7 @@ public class WasmLifter {
                 return 0x3
             case .tag:
                 return 0x4
-            case .import(let exp, _, _):
+            case .import(let exp, _, _, _):
                 return exp.exportTypeByte()
             }
         }
@@ -714,9 +718,9 @@ public class WasmLifter {
         temp += Leb128.unsignedEncode(self.exports.count { $0.getImport() != nil })
 
         // Build the import components of this vector that consist of mod:name, nm:name, and d:importdesc
-        for (idx, (_, importVariable, signature)) in self.exports.compactMap({ $0.getImport() })
-            .enumerated()
-        {
+        for (idx, (_, importVariable, signature, signatureDef)) in self.exports.compactMap({
+            $0.getImport()
+        }).enumerated() {
             if verbose {
                 print(importVariable)
             }
@@ -733,7 +737,12 @@ public class WasmLifter {
                 if verbose {
                     print(functionIdxBase)
                 }
-                temp += [0x0] + Leb128.unsignedEncode(try getSignatureIndex(signature!))
+                if let signatureDef {
+                    let signatureDesc = typer.getTypeDescription(of: signatureDef)
+                    temp += [0x0] + Leb128.unsignedEncode(typeDescToIndex[signatureDesc]!)
+                } else {
+                    temp += [0x0] + Leb128.unsignedEncode(try getSignatureIndex(signature!))
+                }
 
                 // Update the index space, these indices have to be set before the exports are set
                 functionIdxBase += 1
@@ -874,7 +883,7 @@ public class WasmLifter {
     private func buildElementSection() throws {
         let numDefinedTablesWithEntries = self.exports.count {
             if case .table(let instruction) = $0 {
-                return !(instruction!.op as! WasmDefineTable).definedEntries.isEmpty
+                return (instruction!.op as! WasmDefineTable).initializedSlotCount != 0
             } else {
                 return false
             }
@@ -907,25 +916,27 @@ public class WasmLifter {
         // Active element segments
         for case .table(let instruction) in self.exports {
             let table = instruction!.op as! WasmDefineTable
-            let definedEntries = table.definedEntries
-            assert(definedEntries.count == instruction!.inputs.count)
-            if definedEntries.isEmpty { continue }
+            if table.initializedSlotCount == 0 { continue }
             // Element segment case 2 definition.
             temp += [0x02]
             let tableIndex = try self.resolveIdx(ofType: .table, for: instruction!.output)
             temp += Leb128.unsignedEncode(tableIndex)
-            // Starting index. Assumes all entries are continuous.
+            // Starting index. Assumes all entries are continuous and start at zero.
             temp += table.isTable64 ? [0x42] : [0x41]
-            temp += Leb128.unsignedEncode(definedEntries[0].indexInTable)
+            temp += Leb128.unsignedEncode(0)
             temp += [0x0B]  // end
             // elemkind
             temp += [0x00]
             // entry count
-            temp += Leb128.unsignedEncode(definedEntries.count)
+            temp += Leb128.unsignedEncode(table.initializedSlotCount)
             // entries
-            for entry in instruction!.inputs {
-                let functionIdx = try resolveIdx(ofType: .function, for: entry)
+            var i = 0
+            assert(instruction!.inputs.count % 2 == 0)
+            while i < instruction!.inputs.count {
+                let fct = instruction!.input(i)
+                let functionIdx = try resolveIdx(ofType: .function, for: fct)
                 temp += Leb128.unsignedEncode(functionIdx)
+                i += 2
             }
         }
 
@@ -1468,7 +1479,7 @@ public class WasmLifter {
     }
 
     private func importIfNeeded(_ imp: Export) {
-        guard case .import(let type, let variable, let signature) = imp else {
+        guard case .import(let type, let variable, let signature, let signatureDef) = imp else {
             fatalError("This needs an import.")
         }
 
@@ -1485,8 +1496,9 @@ public class WasmLifter {
         // We also need a signature for this import to distinguish it from other imports.
         if type.isFunction || type.isSuspendingObject {
             if !imports.contains(where: {
-                if let otherSig = $0.signature {
-                    $0.variable == variable && otherSig == signature
+                if $0.signature != nil || $0.signatureDef != nil {
+                    $0.variable == variable && $0.signature == signature
+                        && $0.signatureDef == signatureDef
                 } else {
                     false
                 }
@@ -1529,7 +1541,10 @@ public class WasmLifter {
 
                 for importType in [Export.table(nil), Export.memory(nil), Export.global(nil)] {
                     if inputType.Is(.object(ofGroup: importType.groupName())) {
-                        importIfNeeded(.import(type: importType, variable: input, signature: nil))
+                        importIfNeeded(
+                            .import(
+                                type: importType, variable: input, signature: nil, signatureDef: nil
+                            ))
                     }
                 }
 
@@ -1544,7 +1559,7 @@ public class WasmLifter {
                     importIfNeeded(
                         .import(
                             type: .tag(nil), variable: input,
-                            signature: inputType.wasmTagType!.parameters => []))
+                            signature: inputType.wasmTagType!.parameters => [], signatureDef: nil))
                 }
 
                 // Special handling for functions, we only expect them in WasmJSCalls, and WasmDefineTable instructions right now.
@@ -1556,13 +1571,16 @@ public class WasmLifter {
                         let wasmSignature = typer.type(of: instr.input(0))
                             .wasmFunctionSignatureDefSignature
                         importIfNeeded(
-                            .import(type: .function(nil), variable: input, signature: wasmSignature)
-                        )
-                    } else if case .wasmDefineTable(let op) = instr.op.opcode {
-                        // Find the signature in the defined entries
-                        let sig = op.definedEntries[idx].signature
+                            .import(
+                                type: .function(nil), variable: input, signature: wasmSignature,
+                                signatureDef: nil))
+                    } else if case .wasmDefineTable(_) = instr.op.opcode {
+                        // The signature is the following input into the WasmDefineTable operation.
+                        let signature = instr.input(idx + 1)
                         importIfNeeded(
-                            .import(type: .function(nil), variable: input, signature: sig))
+                            .import(
+                                type: .function(nil), variable: input, signature: nil,
+                                signatureDef: signature))
                     } else {
                         // This instruction has likely expected some .object() of a specific group, as this variable can originate from outside wasm, it might have been reassigned to. Which means we will enter this path.
                         // Therefore we need to bail.
@@ -1579,14 +1597,18 @@ public class WasmLifter {
                 self.exports.append(.table(instr))
                 // TODO(pawkra): support shared refs.
                 if tableDef.elementType == .wasmFuncRef() {
-                    for (value, definedEntry) in zip(instr.inputs, tableDef.definedEntries) {
-                        if !typer.type(of: value).Is(.wasmFunctionDef()) {
-                            // Check if we need to import the inputs.
+                    var i = 0
+                    while i < instr.inputs.count {
+                        let function = instr.input(i)
+                        // Check if we need to import the inputs.
+                        if !typer.type(of: function).Is(.wasmFunctionDef()) {
+                            let signature = instr.input(i + 1)
                             importIfNeeded(
                                 .import(
-                                    type: .function(nil), variable: value,
-                                    signature: definedEntry.signature))
+                                    type: .function(nil), variable: function, signature: nil,
+                                    signatureDef: signature))
                         }
+                        i += 2
                     }
                 }
             case .wasmDefineMemory(_):
