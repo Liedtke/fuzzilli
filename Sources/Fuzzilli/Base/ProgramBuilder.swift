@@ -4553,6 +4553,13 @@ public class ProgramBuilder {
         }
 
         @discardableResult
+        public func wasmDefineAdHocSignatureType(
+            signature: WasmSignature, indexTypes: [Variable]? = nil
+        ) -> Variable {
+            b.wasmDefineAdHocSignatureType(signature: signature, indexTypes: indexTypes)
+        }
+
+        @discardableResult
         public func wasmTableGrow(table: Variable, with initialValue: Variable, by delta: Variable)
             -> Variable
         {
@@ -4565,18 +4572,19 @@ public class ProgramBuilder {
             ).output
         }
 
-        // TODO(mliedtke): WasmCallIndirect and WasmReturnCallIndirect need to take a wasm-gc signature as an argument.
         @discardableResult
         public func wasmCallIndirect(
-            signature: WasmSignature, table: Variable, functionArgs: [Variable],
-            tableIndex: Variable
+            signatureDef: Variable, table: Variable, functionArgs: [Variable], tableIndex: Variable
         ) -> [Variable] {
+            let signature = b.type(of: signatureDef).wasmFunctionSignatureDefSignature
             let isTable64 = b.type(of: table).wasmTableType!.isTable64
             return Array(
                 b.emit(
-                    WasmCallIndirect(signature: signature),
-                    withInputs: [table] + functionArgs + [tableIndex],
-                    types: [.wasmTable] + signature.parameterTypes + [
+                    WasmCallIndirect(
+                        parameterCount: signature.parameterTypes.count,
+                        outputCount: signature.outputTypes.count),
+                    withInputs: [table, signatureDef] + functionArgs + [tableIndex],
+                    types: [.wasmTable, .wasmTypeDef()] + signature.parameterTypes + [
                         isTable64 ? .wasmi64 : .wasmi32
                     ]
                 ).outputs)
@@ -4605,15 +4613,17 @@ public class ProgramBuilder {
         }
 
         public func wasmReturnCallIndirect(
-            signature: WasmSignature, table: Variable, functionArgs: [Variable],
-            tableIndex: Variable
+            signatureDef: Variable, table: Variable, functionArgs: [Variable], tableIndex: Variable
         ) {
+            let signature = b.type(of: signatureDef).wasmFunctionSignatureDefSignature
             let isTable64 = b.type(of: table).wasmTableType!.isTable64
             assert(self.signature.outputTypes == signature.outputTypes)
             b.emit(
-                WasmReturnCallIndirect(signature: signature),
-                withInputs: [table] + functionArgs + [tableIndex],
-                types: [.wasmTable] + signature.parameterTypes + [isTable64 ? .wasmi64 : .wasmi32])
+                WasmReturnCallIndirect(parameterCount: signature.parameterTypes.count),
+                withInputs: [table, signatureDef] + functionArgs + [tableIndex],
+                types: [.wasmTable, .wasmTypeDef()] + signature.parameterTypes + [
+                    isTable64 ? .wasmi64 : .wasmi32
+                ])
         }
 
         @discardableResult
@@ -5602,13 +5612,21 @@ public class ProgramBuilder {
             return exports
         }
 
+        @discardableResult
+        public func wasmDefineAdHocSignatureType(
+            signature: WasmSignature, indexTypes: [Variable]? = nil
+        ) -> Variable {
+            b.wasmDefineAdHocSignatureType(signature: signature, indexTypes: indexTypes)
+        }
+
         // TODO: distinguish between exported and non-exported functions
         @discardableResult
         public func addWasmFunction(
-            with signature: WasmSignature,
+            with signature: WasmSignature, indexTypes: [Variable]? = nil,
             _ body: (WasmFunction, Variable, [Variable]) -> [Variable]
         ) -> Variable {
-            let signatureDef = b.wasmDefineAdHocSignatureType(signature: signature)
+            let signatureDef = b.wasmDefineAdHocSignatureType(
+                signature: signature, indexTypes: indexTypes)
             return addWasmFunction(signature: signatureDef, body)
         }
 
@@ -5995,6 +6013,9 @@ public class ProgramBuilder {
             => signature.outputTypes.map(cleanIndexTypes)
         if context.contains(.wasmFunction) {
             return emit(WasmDefineAdHocSignatureType(signature: signature), withInputs: indexTypes)
+                .output
+        } else if context.contains(.wasmTypeGroup) {
+            return emit(WasmDefineSignatureType(signature: signature), withInputs: indexTypes)
                 .output
         } else {
             assert(context.contains(.wasm))

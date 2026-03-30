@@ -914,14 +914,15 @@ public let WasmCodeGenerators: [CodeGenerator] = [
             tableType.isTable64
             ? function.consti64(Int64(tableIndex))
             : function.consti32(Int32(tableIndex))
-        let signatureDef = tableType.knownEntrySignatures[tableIndex]
-        let wasmSignature = signatureDef.wasmFunctionSignatureDefSignature
+        let signatureDefType = tableType.knownEntrySignatures[tableIndex]
+        let signatureDef = b.getWasmTypeDef(for: signatureDefType)
+        let wasmSignature = signatureDefType.wasmFunctionSignatureDefSignature
 
         guard let functionArgs = b.randomWasmArguments(forWasmSignature: wasmSignature)
         else { return }
 
         function.wasmCallIndirect(
-            signature: wasmSignature, table: table,
+            signatureDef: signatureDef, table: table,
             functionArgs: functionArgs, tableIndex: indexVar)
     },
 
@@ -970,8 +971,9 @@ public let WasmCodeGenerators: [CodeGenerator] = [
         }
 
         guard let tableIndex = matchingIndices.randomElement() else { return }
-        let signatureDef = tableType.knownEntrySignatures[tableIndex]
-        let wasmSignature = signatureDef.wasmFunctionSignatureDefSignature
+        let signatureDefType = tableType.knownEntrySignatures[tableIndex]
+        let signatureDef = b.getWasmTypeDef(for: signatureDefType)
+        let wasmSignature = signatureDefType.wasmFunctionSignatureDefSignature
 
         let indexVar =
             tableType.isTable64
@@ -982,7 +984,7 @@ public let WasmCodeGenerators: [CodeGenerator] = [
                 forWasmSignature: wasmSignature)
         else { return }
         function.wasmReturnCallIndirect(
-            signature: wasmSignature, table: table,
+            signatureDef: signatureDef, table: table,
             functionArgs: functionArgs, tableIndex: indexVar)
     },
 

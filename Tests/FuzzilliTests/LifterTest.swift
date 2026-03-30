@@ -3968,8 +3968,9 @@ class LifterTests: XCTestCase {
 
         b.buildWasmModule { m in
             m.addWasmFunction(with: [] => []) { f, _, _ in
+                let sigDef = f.wasmDefineAdHocSignatureType(signature: [] => [])
                 f.wasmCallIndirect(
-                    signature: [] => [], table: table, functionArgs: [], tableIndex: f.consti64(0))
+                    signatureDef: sigDef, table: table, functionArgs: [], tableIndex: f.consti64(0))
                 return []
             }
         }

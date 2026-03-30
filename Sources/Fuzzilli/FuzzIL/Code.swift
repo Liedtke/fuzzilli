@@ -249,7 +249,7 @@ public struct Code: Collection {
                 }
                 guard activeBlocks.contains(where: { $0.scopeId == definingScope }) else {
                     throw FuzzilliError.codeVerificationError(
-                        "variable \(input) is not visible anymore")
+                        "variable \(input) is not visible anymore at instruction \(idx): \(instr)")
                 }
             }
 

@@ -251,7 +251,7 @@ public let ProgramTemplates = [
                             ? function.consti64(Int64(Int.random(in: 0..<callees.count)))
                             : function.consti32(Int32(Int.random(in: 0..<callees.count)))
                         function.wasmReturnCallIndirect(
-                            signature: calleeSig, table: table, functionArgs: arguments,
+                            signatureDef: calleeSigDef, table: table, functionArgs: arguments,
                             tableIndex: calleeIndex)
                     }
                 }

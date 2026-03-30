@@ -1406,8 +1406,8 @@ extension Instruction: ProtobufConvertible {
                 $0.wasmTableSet = Fuzzilli_Protobuf_WasmTableSet()
             case .wasmCallIndirect(let op):
                 $0.wasmCallIndirect = Fuzzilli_Protobuf_WasmCallIndirect.with {
-                    $0.parameterTypes = op.signature.parameterTypes.map(ILTypeToWasmTypeEnum)
-                    $0.outputTypes = op.signature.outputTypes.map(ILTypeToWasmTypeEnum)
+                    $0.parameterCount = Int32(op.parameterCount)
+                    $0.outputCount = Int32(op.numOutputs)
                 }
             case .wasmCallDirect(let op):
                 $0.wasmCallDirect = Fuzzilli_Protobuf_WasmCallDirect.with {
@@ -1420,8 +1420,7 @@ extension Instruction: ProtobufConvertible {
                 }
             case .wasmReturnCallIndirect(let op):
                 $0.wasmReturnCallIndirect = Fuzzilli_Protobuf_WasmReturnCallIndirect.with {
-                    $0.parameterTypes = op.signature.parameterTypes.map(ILTypeToWasmTypeEnum)
-                    $0.outputTypes = op.signature.outputTypes.map(ILTypeToWasmTypeEnum)
+                    $0.parameterCount = Int32(op.parameterCount)
                 }
             case .wasmMemoryLoad(let op):
                 $0.wasmMemoryLoad = Fuzzilli_Protobuf_WasmMemoryLoad.with {
@@ -2561,18 +2560,15 @@ extension Instruction: ProtobufConvertible {
         case .wasmTableSet(_):
             op = WasmTableSet()
         case .wasmCallIndirect(let p):
-            let parameters = p.parameterTypes.map(WasmTypeEnumToILType)
-            let outputs = p.outputTypes.map(WasmTypeEnumToILType)
-            op = WasmCallIndirect(signature: parameters => outputs)
+            op = WasmCallIndirect(
+                parameterCount: Int(p.parameterCount), outputCount: Int(p.outputCount))
         case .wasmCallDirect(let p):
             op = WasmCallDirect(
                 parameterCount: Int(p.parameterCount), outputCount: Int(p.outputCount))
         case .wasmReturnCallDirect(let p):
             op = WasmReturnCallDirect(parameterCount: Int(p.parameterCount))
         case .wasmReturnCallIndirect(let p):
-            let parameters = p.parameterTypes.map(WasmTypeEnumToILType)
-            let outputs = p.outputTypes.map(WasmTypeEnumToILType)
-            op = WasmReturnCallIndirect(signature: parameters => outputs)
+            op = WasmReturnCallIndirect(parameterCount: Int(p.parameterCount))
         case .wasmMemoryLoad(let p):
             op = WasmMemoryLoad(
                 loadType: convertProtoWasmMemoryLoadType(p.loadType), staticOffset: p.staticOffset)

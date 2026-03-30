@@ -669,8 +669,6 @@ public let LazyDeoptFuzzer = ProgramTemplate("LazyDeoptFuzzer") { b in
     b.callFunction(realFct, withArgs: args, guard: guardCalls)
 }
 
-/*
-FIXME: Adapt this template.
 public let WasmDeoptFuzzer = WasmProgramTemplate("WasmDeoptFuzzer") { b in
     b.buildPrefix()
     b.build(n: 10)
@@ -700,20 +698,18 @@ public let WasmDeoptFuzzer = WasmProgramTemplate("WasmDeoptFuzzer") { b in
             }
         }
 
+        let calleeSignatureDef = b.wasmDefineAdHocSignatureType(signature: calleeSignature)
         let table = wasmModule.addTable(
             elementType: .wasmFuncRef(),
             minSize: numCallees,
-            definedEntries: (0..<numCallees).map { i in
-                .init(indexInTable: i, signature: calleeSignature)
-            },
-            definedEntryValues: callees,
+            definedEntryValues: callees.flatMap { [$0, calleeSignatureDef] },
             isTable64: useTable64)
 
         wasmModule.addWasmFunction(with: mainSignature) { function, label, args in
             b.build(n: 10)
             let callArgs = calleeSignature.parameterTypes.map(function.findOrGenerateWasmVar)
             function.wasmCallIndirect(
-                signature: calleeSignature, table: table, functionArgs: callArgs,
+                signatureDef: calleeSignatureDef, table: table, functionArgs: callArgs,
                 tableIndex: args[0])
             b.build(n: 10)
             return mainSignature.outputTypes.map(function.findOrGenerateWasmVar)
@@ -732,7 +728,6 @@ public let WasmDeoptFuzzer = WasmProgramTemplate("WasmDeoptFuzzer") { b in
         b.callFunction(mainFct, withArgs: args)
     }
 }
-*/
 
 public let WasmInJsInliningFuzzer = WasmProgramTemplate("WasmInJsInliningFuzzer") { b in
     b.buildPrefix()

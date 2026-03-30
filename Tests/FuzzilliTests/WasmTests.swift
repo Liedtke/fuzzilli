@@ -965,14 +965,14 @@ class WasmFoundationTests: XCTestCase {
             wasmModule.addWasmFunction(with: [.wasmi32, .wasmi64] => [.wasmi64]) {
                 fn, label, params in
                 let results = fn.wasmCallIndirect(
-                    signature: [.wasmi64] => [.wasmi64, .wasmi64], table: table,
-                    functionArgs: [params[1]], tableIndex: params[0])
+                    signatureDef: wasmSigDef, table: table, functionArgs: [params[1]],
+                    tableIndex: params[0])
                 return [fn.wasmi64BinOp(results[0], results[1], binOpKind: .Add)]
             }
             wasmModule.addWasmFunction(with: [.wasmi32, .wasmi64] => [.wasmi64]) {
                 fn, label, params in
-                fn.wasmCallIndirect(
-                    signature: [.wasmi64] => [.wasmi64], table: table, functionArgs: [params[1]],
+                return fn.wasmCallIndirect(
+                    signatureDef: jsSigDef, table: table, functionArgs: [params[1]],
                     tableIndex: params[0])
             }
 
@@ -996,6 +996,102 @@ class WasmFoundationTests: XCTestCase {
         testForOutput(program: jsProg, runner: runner, outputString: "11\n52\n")
     }
 
+    func testCallIndirectWithGCTypes() throws {
+        let runner = try GetJavaScriptExecutorOrSkipTest()
+        let liveTestConfig = Configuration(logLevel: .error, enableInspection: true)
+
+        let fuzzer = makeMockFuzzer(config: liveTestConfig, environment: JavaScriptEnvironment())
+        let b = fuzzer.makeBuilder()
+
+        let types = b.wasmDefineTypeGroup {
+            let arrayDef = b.wasmDefineArrayType(elementType: .wasmi32, mutability: true)
+            let structDef = b.wasmDefineStructType(
+                fields: [
+                    WasmStructTypeDescription.Field(type: .wasmi32, mutability: true),
+                    WasmStructTypeDescription.Field(type: .wasmi64, mutability: true),
+                ], indexTypes: [])
+
+            // Signature: (array, struct) -> (struct)
+            // We use .wasmRef(.Index(), nullability: false) as placeholders in the signature and provide the actual type definitions in indexTypes.
+            let wasmSigDef = b.wasmDefineAdHocSignatureType(
+                signature: [
+                    .wasmRef(.Index(), nullability: false), .wasmRef(.Index(), nullability: false),
+                ] => [.wasmRef(.Index(), nullability: false)],
+                indexTypes: [arrayDef, structDef, structDef]
+            )
+            return [arrayDef, structDef, wasmSigDef]
+        }
+
+        let arrayDef = types[0]
+        let structDef = types[1]
+        let wasmSigDef = types[2]
+
+        let module = b.buildWasmModule { wasmModule in
+            let wasmFunction = wasmModule.addWasmFunction(signature: wasmSigDef) {
+                function, label, params in
+                let array = params[0]
+                let s = params[1]
+                let val = function.wasmArrayGet(array: array, index: function.consti32(0))
+                let f0 = function.wasmStructGet(theStruct: s, fieldIndex: 0)
+                let f1 = function.wasmStructGet(theStruct: s, fieldIndex: 1)
+
+                let newVal = function.wasmi32BinOp(val, f0, binOpKind: .Add)
+                let newS = function.wasmStructNew(structType: structDef, fields: [newVal, f1])
+                return [newS]
+            }
+
+            let table = wasmModule.addTable(
+                elementType: .wasmFuncRef(),
+                minSize: 10,
+                definedEntryValues: [wasmFunction, wasmSigDef],
+                isTable64: false)
+
+            wasmModule.addWasmFunction(
+                with: [
+                    .wasmi32, .wasmRef(.Index(), nullability: false),
+                    .wasmRef(.Index(), nullability: false),
+                ] => [.wasmRef(.Index(), nullability: false)],
+                indexTypes: [arrayDef, structDef, structDef]
+            ) { fn, label, params in
+                let results = fn.wasmCallIndirect(
+                    signatureDef: wasmSigDef, table: table, functionArgs: [params[1], params[2]],
+                    tableIndex: params[0])
+                return [results[0]]
+            }
+
+            // Wrapper function to instantiate GC types and perform the indirect call.
+            wasmModule.addWasmFunction(with: [.wasmi32] => [.wasmi32, .wasmi64]) {
+                fn, label, params in
+                let array = fn.wasmArrayNewFixed(arrayType: arrayDef, elements: [fn.consti32(100)])
+                let s = fn.wasmStructNew(
+                    structType: structDef, fields: [fn.consti32(42), fn.consti64(7)])
+                let callIndirect = fn.wasmCallIndirect(
+                    signatureDef: wasmSigDef, table: table, functionArgs: [array, s],
+                    tableIndex: params[0])
+                let result = callIndirect[0]
+                let f0 = fn.wasmStructGet(theStruct: result, fieldIndex: 0)
+                let f1 = fn.wasmStructGet(theStruct: result, fieldIndex: 1)
+                return [f0, f1]
+            }
+        }
+
+        let exports = module.loadExports()
+
+        // Method 2 is the wrapper function.
+        let wrapper = b.getProperty(module.getExportedMethod(at: 2), of: exports)
+        let result = b.callFunction(wrapper, withArgs: [b.loadInt(0)])
+
+        let outputFunc = b.createNamedVariable(forBuiltin: "output")
+        b.callFunction(outputFunc, withArgs: [b.getProperty("0", of: result)])
+        b.callFunction(
+            outputFunc, withArgs: [b.callMethod("toString", on: b.getProperty("1", of: result))])
+
+        let prog = b.finalize()
+        let jsProg = fuzzer.lifter.lift(prog)
+
+        testForOutput(program: jsProg, runner: runner, outputString: "142\n7\n")
+    }
+
     func testCallIndirectMultiModule() throws {
         let runner = try GetJavaScriptExecutorOrSkipTest()
         let liveTestConfig = Configuration(logLevel: .error, enableInspection: true)
@@ -1012,13 +1108,13 @@ class WasmFoundationTests: XCTestCase {
         var wasmSigDef: Variable!
         var jsSigDef: Variable!
         let module = b.buildWasmModule { wasmModule in
-            wasmSigDef = b.wasmDefineAdHocSignatureType(
+            wasmSigDef = wasmModule.wasmDefineAdHocSignatureType(
                 signature: [.wasmi64] => [.wasmi64, .wasmi64])
             let wasmFunction = wasmModule.addWasmFunction(signature: wasmSigDef) {
                 function, label, params in
                 return [params[0], function.consti64(1)]
             }
-            jsSigDef = b.wasmDefineAdHocSignatureType(signature: [.wasmi64] => [.wasmi64])
+            jsSigDef = wasmModule.wasmDefineAdHocSignatureType(signature: [.wasmi64] => [.wasmi64])
             wasmModule.addTable(
                 elementType: .wasmFuncRef(),
                 minSize: 10,
@@ -1036,18 +1132,22 @@ class WasmFoundationTests: XCTestCase {
                 ]))
         XCTAssertEqual(b.type(of: table), tableType)
         let module2 = b.buildWasmModule { wasmModule in
+            let wasmSigDef2 = wasmModule.wasmDefineAdHocSignatureType(
+                signature: [.wasmi64] => [.wasmi64, .wasmi64])
             wasmModule.addWasmFunction(with: [.wasmi32, .wasmi64] => [.wasmi64]) {
                 fn, label, params in
                 let results = fn.wasmCallIndirect(
-                    signature: [.wasmi64] => [.wasmi64, .wasmi64], table: table,
-                    functionArgs: [params[1]], tableIndex: params[0])
+                    signatureDef: wasmSigDef2, table: table, functionArgs: [params[1]],
+                    tableIndex: params[0])
                 return [fn.wasmi64BinOp(results[0], results[1], binOpKind: .Add)]
             }
 
+            let jsSigDef2 = wasmModule.wasmDefineAdHocSignatureType(
+                signature: [.wasmi64] => [.wasmi64])
             wasmModule.addWasmFunction(with: [.wasmi32, .wasmi64] => [.wasmi64]) {
                 fn, label, params in
-                fn.wasmCallIndirect(
-                    signature: [.wasmi64] => [.wasmi64], table: table, functionArgs: [params[1]],
+                return fn.wasmCallIndirect(
+                    signatureDef: jsSigDef2, table: table, functionArgs: [params[1]],
                     tableIndex: params[0])
             }
 
@@ -1208,14 +1308,14 @@ class WasmFoundationTests: XCTestCase {
             wasmModule.addWasmFunction(with: [.wasmi32, .wasmi64] => [.wasmi64, .wasmi64]) {
                 fn, label, params in
                 fn.wasmReturnCallIndirect(
-                    signature: [.wasmi64] => [.wasmi64, .wasmi64], table: table,
-                    functionArgs: [params[1]], tableIndex: params[0])
+                    signatureDef: wasmSigDef, table: table, functionArgs: [params[1]],
+                    tableIndex: params[0])
                 return [fn.consti64(-1), fn.consti64(-1)]
             }
             wasmModule.addWasmFunction(with: [.wasmi32, .wasmi64] => [.wasmi64]) {
                 fn, label, params in
                 fn.wasmReturnCallIndirect(
-                    signature: [.wasmi64] => [.wasmi64], table: table, functionArgs: [params[1]],
+                    signatureDef: jsSigDef, table: table, functionArgs: [params[1]],
                     tableIndex: params[0])
                 return [fn.consti64(-1)]
             }
@@ -5495,11 +5595,12 @@ class WasmFoundationTests: XCTestCase {
                     f.wasmTableInit(
                         elementSegment: elemSegment2, table: table2, tableOffset: tableOffset(5),
                         elementSegmentOffset: f.consti32(2), nrOfElementsToUpdate: f.consti32(2))
+                    let sigDef = f.wasmDefineAdHocSignatureType(signature: [] => [.wasmi64])
                     let callIndirect = { (table: Variable, idx: Int) in
                         let idxVar = isTable64 ? f.consti64(Int64(idx)) : f.consti32(Int32(idx))
                         return f.wasmCallIndirect(
-                            signature: [] => [.wasmi64], table: table, functionArgs: [],
-                            tableIndex: idxVar)
+                            signatureDef: sigDef, table: table, functionArgs: [], tableIndex: idxVar
+                        )
                     }
                     return callIndirect(table2, 5) + callIndirect(table2, 6)
                 }
@@ -5559,8 +5660,8 @@ class WasmFoundationTests: XCTestCase {
                     let callIndirect = { (table: Variable, idx: Int) in
                         let idxVar = isTable64 ? f.consti64(Int64(idx)) : f.consti32(Int32(idx))
                         return f.wasmCallIndirect(
-                            signature: [] => [.wasmi64], table: table, functionArgs: [],
-                            tableIndex: idxVar)
+                            signatureDef: sigDef, table: table, functionArgs: [], tableIndex: idxVar
+                        )
                     }
                     return callIndirect(table1, 1) + callIndirect(table1, 2)
                 }

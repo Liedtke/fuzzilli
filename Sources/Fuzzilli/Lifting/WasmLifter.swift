@@ -361,6 +361,7 @@ public class WasmLifter {
     // Holds various information for the functions in a wasm module.
     class FunctionInfo {
         var signature: WasmSignature
+        var signatureDef: Variable
         var code: Data
         var branchHints: [(hint: WasmBranchHint, offset: Int)] = []
         var outputVariable: Variable? = nil
@@ -376,11 +377,13 @@ public class WasmLifter {
 
         // Expects the withArguments array to contain the variables of the innerOutputs, they should map directly to the local indices.
         init(
-            _ signature: WasmSignature, _ code: Data, for lifter: WasmLifter,
+            _ signature: WasmSignature, signatureDef: Variable, _ code: Data,
+            for lifter: WasmLifter,
             withArguments arguments: [Variable]
         ) {
             // Infer the first few locals from this signature.
             self.signature = signature
+            self.signatureDef = signatureDef
             self.code = code
             self.localsInfo = [(Variable, ILType)]()
             self.lifter = lifter
@@ -635,11 +638,6 @@ public class WasmLifter {
             registerSignature(signature)
         }
 
-        // Special handling for defined functions
-        for case .function(let functionInfo) in self.exports {
-            registerSignature(functionInfo!.signature)
-        }
-
         let typeCount = self.signatures.count + typeGroups.count
         if typeCount == 0 {
             return
@@ -684,14 +682,13 @@ public class WasmLifter {
     }
 
     private func registerSignature(_ signature: WasmSignature) {
-        assert(signatures.count == signatureIndexMap.count)
         if signatureIndexMap[signature] != nil {
             return
         }
+
         let signatureIndex = userDefinedTypesCount + signatures.count
         signatures.append(signature)
         signatureIndexMap[signature] = signatureIndex
-        assert(signatures.count == signatureIndexMap.count)
     }
 
     private func getSignatureIndex(_ signature: WasmSignature) throws -> Int {
@@ -821,7 +818,8 @@ public class WasmLifter {
         var temp = Leb128.unsignedEncode(functionCount)
 
         for case .function(let functionInfo) in self.exports {
-            temp.append(Leb128.unsignedEncode(try getSignatureIndex(functionInfo!.signature)))
+            let typeDesc = typer.getTypeDescription(of: functionInfo!.signatureDef)
+            temp.append(Leb128.unsignedEncode(typeDescToIndex[typeDesc]!))
         }
 
         // Append the length of the section and the section contents itself.
@@ -1339,20 +1337,16 @@ public class WasmLifter {
                 self.currentFunction!.variableAnalyzer.wasmBranchDepth - 1
             // Needs typer analysis
             return true
-        case .wasmCallIndirect(let op):
-            registerSignature(op.signature)
-            return true
-        case .wasmReturnCallIndirect(let op):
-            registerSignature(op.signature)
-            return true
         case .wasmNop(_):
             // Just analyze the instruction but do nothing else here.
             // This lets the typer know that we can skip this instruction without breaking any analysis.
             break
         case .beginWasmFunction(_):
+            let signatureDef = instr.input(0)
             let signature = typer.type(of: instr.input(0)).wasmFunctionSignatureDefSignature
             let functionInfo = FunctionInfo(
-                signature, Data(), for: self, withArguments: Array(instr.innerOutputs))
+                signature, signatureDef: signatureDef, Data(), for: self,
+                withArguments: Array(instr.innerOutputs))
             self.exports.append(.function(functionInfo))
             // Set the current active function as we are *actively* in it.
             currentFunction = functionInfo
@@ -1920,9 +1914,11 @@ public class WasmLifter {
             // Value 0x0f is table.grow opcode
             return Data([Prefix.Numeric.rawValue]) + Leb128.unsignedEncode(0x0f)
                 + Leb128.unsignedEncode(try resolveIdx(ofType: .table, for: tableRef))
-        case .wasmCallIndirect(let op):
+        case .wasmCallIndirect(_):
             let tableRef = wasmInstruction.input(0)
-            let sigIndex = try getSignatureIndex(op.signature)
+            let signatureDef = wasmInstruction.input(1)
+            let typeDesc = typer.getTypeDescription(of: signatureDef)
+            let sigIndex = typeDescToIndex[typeDesc]!
             return Data([0x11]) + Leb128.unsignedEncode(sigIndex)
                 + Leb128.unsignedEncode(try resolveIdx(ofType: .table, for: tableRef))
         case .wasmCallDirect(_):
@@ -1933,9 +1929,11 @@ public class WasmLifter {
             let functionRef = wasmInstruction.input(0)
             return Data([0x12])
                 + Leb128.unsignedEncode(try resolveIdx(ofType: .function, for: functionRef))
-        case .wasmReturnCallIndirect(let op):
+        case .wasmReturnCallIndirect(_):
             let tableRef = wasmInstruction.input(0)
-            let sigIndex = try getSignatureIndex(op.signature)
+            let signatureDef = wasmInstruction.input(1)
+            let typeDesc = typer.getTypeDescription(of: signatureDef)
+            let sigIndex = typeDescToIndex[typeDesc]!
             return Data([0x13]) + Leb128.unsignedEncode(sigIndex)
                 + Leb128.unsignedEncode(try resolveIdx(ofType: .table, for: tableRef))
         case .wasmMemoryLoad(let op):

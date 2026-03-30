@@ -481,12 +481,20 @@ public struct JSTyper: Analyzer {
     }
 
     func getWasmTypeDef(for type: ILType) -> Variable {
-        assert(type.isWasmReferenceType)
-        guard case .Index(let desc) = type.wasmReferenceType!.kind else {
-            fatalError("\(type) is not an index type")
+        let desc: WasmTypeDescription?
+        if let refType = type.wasmReferenceType {
+            guard case .Index(let unownedDesc) = refType.kind else {
+                fatalError("\(type) is not an index type")
+            }
+            desc = unownedDesc.get()
+        } else if let typeDef = type.wasmTypeDefinition {
+            desc = typeDef.description
+        } else {
+            fatalError("\(type) is not a Wasm type definition")
         }
-        guard let desc = desc.get(), let typeDef = wasmTypeDefMap[desc] else {
-            fatalError("missing type definition link for type \(type), desc \(desc)")
+
+        guard let desc, let typeDef = wasmTypeDefMap[desc] else {
+            fatalError("missing type definition link for type \(type)")
         }
         return typeDef
     }
@@ -1036,8 +1044,9 @@ public struct JSTyper: Analyzer {
                     setType(of: output, to: outputType)
                 }
             // We don't need to update the DynamicObjectGroupManager, as all functions that can be called here are .wasmFunctionDef types, this means we have already added them when we saw the EndWasmFunction instruction.
-            case .wasmCallIndirect(let op):
-                for (output, outputType) in zip(instr.outputs, op.signature.outputTypes) {
+            case .wasmCallIndirect(_):
+                let signature = type(of: instr.input(1)).wasmFunctionSignatureDefSignature
+                for (output, outputType) in zip(instr.outputs, signature.outputTypes) {
                     setType(of: output, to: outputType)
                 }
             // Functions that can be called through a table are also already added by the wasmDefineTable instruction.

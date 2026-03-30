@@ -1158,13 +1158,13 @@ public class FuzzILLifter: Lifter {
                 )
             }
 
-        case .wasmCallIndirect(let op):
+        case .wasmCallIndirect(_):
             let inputs = instr.inputs.map(lift).joined(separator: ", ")
-            if op.signature.outputTypes.isEmpty {
-                w.emit("WasmCallIndirect(\(op.signature)) \(inputs)")
+            if instr.outputs.isEmpty {
+                w.emit("WasmCallIndirect \(inputs)")
             } else {
                 let outputs = instr.outputs.map(lift).joined(separator: ", ")
-                w.emit("\(outputs) <- WasmCallIndirect(\(op.signature)) \(inputs)")
+                w.emit("\(outputs) <- WasmCallIndirect \(inputs)")
             }
 
         case .wasmCallDirect(_):
@@ -1180,9 +1180,9 @@ public class FuzzILLifter: Lifter {
             let inputs = instr.inputs.map(lift).joined(separator: ", ")
             w.emit("WasmReturnCallDirect \(inputs)")
 
-        case .wasmReturnCallIndirect(let op):
+        case .wasmReturnCallIndirect(_):
             let inputs = instr.inputs.map(lift).joined(separator: ", ")
-            w.emit("WasmReturnCallIndirect(\(op.signature)) \(inputs)")
+            w.emit("WasmReturnCallIndirect \(inputs)")
 
         case .wasmBeginBlock(_):
             // TODO(cffsmith): Maybe lift labels as e.g. L7 or something like that?

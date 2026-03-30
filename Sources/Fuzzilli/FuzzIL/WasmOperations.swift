@@ -955,14 +955,14 @@ final class WasmTableGrow: WasmOperation {
 
 final class WasmCallIndirect: WasmOperation {
     override var opcode: Opcode { .wasmCallIndirect(self) }
-    let signature: WasmSignature
 
-    init(signature: WasmSignature) {
-        self.signature = signature
+    init(parameterCount: Int, outputCount: Int) {
         super.init(
-            numInputs: 2 + signature.parameterTypes.count, numOutputs: signature.outputTypes.count,
-            requiredContext: [.wasmFunction])
+            numInputs: 3 + parameterCount, numOutputs: outputCount, requiredContext: [.wasmFunction]
+        )
     }
+
+    var parameterCount: Int { numInputs - 3 }
 }
 
 final class WasmCallDirect: WasmOperation {
@@ -991,14 +991,14 @@ final class WasmReturnCallDirect: WasmOperation {
 
 final class WasmReturnCallIndirect: WasmOperation {
     override var opcode: Opcode { .wasmReturnCallIndirect(self) }
-    let signature: WasmSignature
 
-    init(signature: WasmSignature) {
-        self.signature = signature
+    init(parameterCount: Int) {
         super.init(
-            numInputs: 2 + signature.parameterTypes.count, numOutputs: 0, attributes: [.isJump],
+            numInputs: 3 + parameterCount, numOutputs: 0, attributes: [.isJump],
             requiredContext: [.wasmFunction])
     }
+
+    var parameterCount: Int { numInputs - 3 }
 }
 
 // WasmMemory operations
