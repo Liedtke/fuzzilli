@@ -4096,11 +4096,11 @@ public class ProgramBuilder {
             "Must have either a Catch or a Finally block (or both)")
         emit(BeginTry())
         tryBody()
-        if let catchBody = catchBody {
+        if let catchBody {
             let exception = emit(BeginCatch()).innerOutput
             catchBody(exception)
         }
-        if let finallyBody = finallyBody {
+        if let finallyBody {
             emit(BeginFinally())
             finallyBody()
         }

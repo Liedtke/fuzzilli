@@ -731,6 +731,108 @@ public let WasmDeoptFuzzer = WasmProgramTemplate("WasmDeoptFuzzer") { b in
     }
 }
 
+public let WasmInJsInliningFuzzer = WasmProgramTemplate("WasmInJsInliningFuzzer") { b in
+    b.buildPrefix()
+    b.build(n: 10)
+
+    // TODO(mliedtke): Be a bit more flexible while still preferring inlineable signatures?
+    let allowedTypes: [ILType] = [.wasmi32, .wasmi64, .wasmf32, .wasmf64, .wasmExternRef()]
+    let wasmSignature =
+        (0..<Int.random(in: 0...3)).map { _ in allowedTypes.randomElement()! }
+        => (0..<Int.random(in: 0...1)).map { _ in allowedTypes.randomElement()! }
+
+    // Emit a TypeGroup to increase the chance for interesting wasm-gc cases.
+    b.wasmDefineTypeGroup {
+        b.build(n: 3)
+    }
+
+    // Create a Wasm function that we can call from JS.
+    let wasmModule = b.buildWasmModule { wasmModule in
+        // Build some other functions, tags, globals, tables etc.
+        b.build(n: 5)
+        // Create the function we want to call from JS.
+        wasmModule.addWasmFunction(with: wasmSignature) { function, label, args in
+            // Use a small budget. This increases the chance of hitting cases that will try the body
+            // inlining.
+            b.build(n: Int.random(in: 1...10))
+            return wasmSignature.outputTypes.map(function.findOrGenerateWasmVar)
+        }
+    }
+
+    let exports = wasmModule.loadExports()
+    let wasmFctName = wasmModule.getExportedMethods().last!.0
+    let wasmFct = b.getProperty(wasmFctName, of: exports)
+
+    // Add an object to the scope that if used as a numeric argument, triggers a lazy deopt of the
+    // JS function inlining the Wasm function.
+    let lazyDeoptTrigger = b.buildObjectLiteral { _ in }
+
+    // Potentially adding some control-flow or trying to inline into try-catch blocks which require
+    // wiring up of exception-continuations or other special cases.
+    let possibleWrappers: [(@escaping () -> Void) -> Void] = [
+        { f in f() },
+        { f in
+            b.buildIfElse(b.randomJsVariable()) {
+                f()
+            } elseBody: {
+                b.build(n: 5)
+            }
+        },
+        { f in b.buildRepeatLoop(n: 5, { f() }) },
+        { f in
+            b.buildTryCatchFinally {
+                f()
+            } catchBody: { _ in
+                b.build(n: 5)
+            }
+        },
+        { f in
+            b.buildTryCatchFinally {
+                b.throwException(b.randomJsVariable())
+            } catchBody: { _ in
+                f()
+            }
+        },
+    ]
+
+    // Create a JS function that calls the Wasm function.
+    let params = ProgramBuilder.SubroutineDescriptor.parameters(n: 1)
+    let body = { (args: [Variable]) in
+        b.build(n: 5)
+        let jsSig = ProgramBuilder.convertWasmSignatureToJsSignature(wasmSignature)
+        possibleWrappers.randomElement()! {
+            b.build(n: 5)
+            let args = b.randomArguments(forCallingFunctionWithSignature: jsSig)
+            b.callFunction(wasmFct, withArgs: args)
+            b.build(n: 5)
+        }
+        b.build(n: 5)
+        b.doReturn(b.randomJsVariable())
+    }
+    // Pick an arbitrary function "type".
+    let jsFct = withEqualProbability(
+        { b.buildPlainFunction(with: params, body) },
+        { b.buildArrowFunction(with: params, body) },
+        { b.buildGeneratorFunction(with: params, body) },
+        { b.buildAsyncFunction(with: params, body) },
+    )
+
+    // Finish the deopt trigger now that the jsFct is in scope.
+    b.setProperty(
+        "valueOf", of: lazyDeoptTrigger,
+        to: b.buildArrowFunction(with: .parameters(n: 0)) { _ in
+            b.eval("%DeoptimizeFunction(%@);", with: [jsFct])
+        })
+
+    // Collect feedback and tier-up the JS function, potentially triggering some wasm-into-js
+    // inlining. Use two different arguments to increase the chance for differneces in behavior
+    // between the feedback collection and the optimized run.
+    b.eval("%PrepareFunctionForOptimization(%@)", with: [jsFct])
+    b.callFunction(jsFct, withArgs: [b.randomJsVariable()], guard: true)
+    b.eval("%OptimizeFunctionOnNextCall(%@)", with: [jsFct])
+    b.callFunction(jsFct, withArgs: [b.randomJsVariable()], guard: true)
+}
+
 public let WasmTurbofanFuzzer = WasmProgramTemplate("WasmTurbofanFuzzer") { b in
     b.buildPrefix()
     b.build(n: 10)
