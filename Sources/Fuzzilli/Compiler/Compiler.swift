@@ -1375,9 +1375,10 @@ public class JavaScriptCompiler {
                     let propertyExpr = propertyExpression.expression
                     let property = try compileExpression(propertyExpression)
 
-                    if case .numberLiteral(let numberLiteral) = propertyExpr {
+                    if case .numberLiteral(let numberLiteral) = propertyExpr,
+                        let index = Int64(exactly: numberLiteral.value)
+                    {
                         // Delete an element (e.g., delete arr[42])
-                        let index = Int64(numberLiteral.value)
                         let instr = emit(
                             DeleteElement(index: index, isGuarded: isGuarded),
                             withInputs: [obj]
