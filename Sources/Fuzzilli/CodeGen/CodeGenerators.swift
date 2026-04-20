@@ -2797,11 +2797,13 @@ public let CodeGenerators: [CodeGenerator] = [
         ]),
 
     CodeGenerator("LoopBreakGenerator", inContext: .single(.loop)) { b in
-        b.loopBreak()
+        let label = probability(0.2) ? b.randomVariable(ofType: .jsLoopLabel) : nil
+        b.loopBreak(label)
     },
 
     CodeGenerator("ContinueGenerator", inContext: .single(.loop)) { b in
-        b.loopContinue()
+        let label = probability(0.2) ? b.randomVariable(ofType: .jsLoopLabel) : nil
+        b.loopContinue(label)
     },
 
     CodeGenerator(

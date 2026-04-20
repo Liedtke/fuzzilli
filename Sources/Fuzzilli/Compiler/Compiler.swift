@@ -529,6 +529,7 @@ public class JavaScriptCompiler {
 
             // Process body
             outputs = emit(BeginForLoopBody(numLoopVariables: loopVariables.count)).innerOutputs
+                .dropLast()
             try enterNewScope {
                 zip(loopVariables, outputs).forEach({ map($0, to: $1) })
                 try compileBody(forLoop.body)
@@ -545,7 +546,7 @@ public class JavaScriptCompiler {
 
             let obj = try compileExpression(forInLoop.right)
 
-            let loopVar = emit(BeginForInLoop(), withInputs: [obj]).innerOutput
+            let loopVar = emit(BeginForInLoop(), withInputs: [obj]).innerOutput(0)
             try enterNewScope {
                 map(initializer.name, to: loopVar)
                 try compileBody(forInLoop.body)
@@ -562,7 +563,7 @@ public class JavaScriptCompiler {
 
             let obj = try compileExpression(forOfLoop.right)
 
-            let loopVar = emit(BeginForOfLoop(), withInputs: [obj]).innerOutput
+            let loopVar = emit(BeginForOfLoop(), withInputs: [obj]).innerOutput(0)
             try enterNewScope {
                 map(initializer.name, to: loopVar)
                 try compileBody(forOfLoop.body)

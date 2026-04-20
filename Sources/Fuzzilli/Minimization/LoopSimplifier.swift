@@ -95,13 +95,19 @@ struct LoopSimplifier: Reducer {
         let conditionBlock = group.block(1)
         let beginConditionBlock = helper.code[conditionBlock.head]
         assert(beginConditionBlock.op is BeginForLoopCondition)
+
+        let bodyBlock = group.block(3)
+        let beginBodyBlock = helper.code[bodyBlock.head]
+        assert(beginBodyBlock.op is BeginForLoopBody)
+
         let headerIndex = newCode.count
         let needLoopVariable = beginConditionBlock.numInnerOutputs > 0
         let loopVar = needLoopVariable ? beginConditionBlock.innerOutput(0) : nil
+        let labelVar = beginBodyBlock.innerOutput(beginBodyBlock.numInnerOutputs - 1)
         newCode.append(
             Instruction(
                 BeginRepeatLoop(iterations: 1, exposesLoopCounter: needLoopVariable),
-                inouts: needLoopVariable ? [loopVar!] : []))
+                inouts: needLoopVariable ? [loopVar!, labelVar] : [labelVar]))
 
         // Append condition, body, and afterthought code
         var replacements = [Variable: Variable](
@@ -111,10 +117,11 @@ struct LoopSimplifier: Reducer {
             newCode.append(Instruction(instr.op, inouts: newInouts))
         }
 
-        let bodyBlock = group.block(3)
         assert(helper.code[bodyBlock.head].op is BeginForLoopBody)
         replacements = [Variable: Variable](
-            uniqueKeysWithValues: helper.code[bodyBlock.head].innerOutputs.map({ ($0, loopVar!) }))
+            uniqueKeysWithValues: helper.code[bodyBlock.head].innerOutputs.dropLast().map({
+                ($0, loopVar!)
+            }))
         for instr in helper.code.body(of: bodyBlock) {
             let newInouts = instr.inouts.map({ replacements[$0] ?? $0 })
             newCode.append(Instruction(instr.op, inouts: newInouts))
@@ -160,7 +167,14 @@ struct LoopSimplifier: Reducer {
         var newCode = [Instruction]()
 
         // Append loop header
-        newCode.append(Instruction(BeginRepeatLoop(iterations: 1, exposesLoopCounter: false)))
+        let bodyBlock = group.block(1)
+        let beginWhileLoopBody = helper.code[bodyBlock.head]
+        assert(beginWhileLoopBody.op is BeginWhileLoopBody)
+        let label = beginWhileLoopBody.innerOutput
+
+        let repeatOp = BeginRepeatLoop(iterations: 1, exposesLoopCounter: false)
+        let repeatInouts = [label]
+        newCode.append(Instruction(repeatOp, inouts: repeatInouts))
 
         // Append loop header and body code
         let headerBlock = group.block(0)
@@ -169,7 +183,6 @@ struct LoopSimplifier: Reducer {
             newCode.append(instr)
         }
 
-        let bodyBlock = group.block(1)
         assert(helper.code[bodyBlock.head].op is BeginWhileLoopBody)
         for instr in helper.code.body(of: bodyBlock) {
             newCode.append(instr)
@@ -204,10 +217,16 @@ struct LoopSimplifier: Reducer {
         var newCode = [Instruction]()
 
         // Append loop header
-        newCode.append(Instruction(BeginRepeatLoop(iterations: 1, exposesLoopCounter: false)))
+        let bodyBlock = group.block(0)
+        let beginDoWhileLoopBody = helper.code[bodyBlock.head]
+        assert(beginDoWhileLoopBody.op is BeginDoWhileLoopBody)
+        let label = beginDoWhileLoopBody.innerOutput
+
+        let repeatOp = BeginRepeatLoop(iterations: 1, exposesLoopCounter: false)
+        let repeatInouts = [label]
+        newCode.append(Instruction(repeatOp, inouts: repeatInouts))
 
         // Append loop body and header code
-        let bodyBlock = group.block(0)
         assert(helper.code[bodyBlock.head].op is BeginDoWhileLoopBody)
         for instr in helper.code.body(of: bodyBlock) {
             newCode.append(instr)
@@ -240,15 +259,11 @@ struct LoopSimplifier: Reducer {
                 // We should never increase the number of iterations
                 return
             }
-            let replacement: Instruction
-            if originalLoopHeader.exposesLoopCounter {
-                replacement = Instruction(
-                    BeginRepeatLoop(iterations: numIterations, exposesLoopCounter: true),
-                    inouts: helper.code[group.head].inouts)
-            } else {
-                replacement = Instruction(
-                    BeginRepeatLoop(iterations: numIterations, exposesLoopCounter: false))
-            }
+            let repeatOp = BeginRepeatLoop(
+                iterations: numIterations, exposesLoopCounter: originalLoopHeader.exposesLoopCounter
+            )
+            let replacement = Instruction(
+                repeatOp, inouts: helper.code[group.head].inouts)
             if helper.tryReplacing(
                 instructionAt: group.head, with: replacement, numExecutions: numTestExecutions)
             {
@@ -262,16 +277,12 @@ struct LoopSimplifier: Reducer {
         loopHeaderIndexInNewCode headerIndex: Int, using helper: MinimizationHelper
     ) {
         var newCode = newCode
-        assert(newCode[headerIndex].op is BeginRepeatLoop)
+        let originalOp = newCode[headerIndex].op as! BeginRepeatLoop
         for numIterations in commonLoopIterationCounts {
-            if newCode[headerIndex].numInnerOutputs > 0 {
-                newCode[headerIndex] = Instruction(
-                    BeginRepeatLoop(iterations: numIterations, exposesLoopCounter: true),
-                    inouts: newCode[headerIndex].inouts)
-            } else {
-                newCode[headerIndex] = Instruction(
-                    BeginRepeatLoop(iterations: numIterations, exposesLoopCounter: false))
-            }
+            let repeatOp = BeginRepeatLoop(
+                iterations: numIterations, exposesLoopCounter: originalOp.exposesLoopCounter)
+            newCode[headerIndex] = Instruction(
+                repeatOp, inouts: newCode[headerIndex].inouts)
             // After this change, the variable numbers may no longer be sequential as we may have removed instructions with inner outputs. So we need to also renumber the variables.
             if helper.tryReplacing(
                 range: range, with: newCode, renumberVariables: true,
@@ -350,26 +361,60 @@ struct LoopSimplifier: Reducer {
         var replacements = [(Int, Instruction)]()
         replacements.append((innerHead, Instruction(Nop())))
         replacements.append((innerTail, Instruction(Nop())))
+
+        let outerLabel = helper.code[outerHead].innerOutputs.last!
+        let innerLabel = helper.code[innerHead].innerOutputs.last!
+
         if !outer.exposesLoopCounter && !inner.exposesLoopCounter {
             // The simplest case: only need to replace the loop instructions and not deal with loop counters at all
             assert(!newHead.exposesLoopCounter)
-            replacements.append((outerHead, Instruction(newHead)))
+            let inouts = [outerLabel]
+            replacements.append((outerHead, Instruction(newHead, inouts: inouts)))
         } else if !outer.exposesLoopCounter || !inner.exposesLoopCounter {
             // Another simple case: only need to replace the loop instructions and reuse the one existing loop counter variable
             assert(newHead.exposesLoopCounter)
             let loopVar =
                 outer.exposesLoopCounter
-                ? helper.code[outerHead].innerOutput : helper.code[innerHead].innerOutput
-            replacements.append((outerHead, Instruction(newHead, innerOutput: loopVar)))
+                ? helper.code[outerHead].innerOutput(0) : helper.code[innerHead].innerOutput(0)
+            let inouts = [loopVar, outerLabel]
+            replacements.append((outerHead, Instruction(newHead, inouts: inouts)))
         } else {
             // The more complicated case: we also need to rebind references to the inner loop's counter variable to the new counter variable
-            let loopVar = helper.code[outerHead].innerOutput
-            replacements.append((outerHead, Instruction(newHead, innerOutput: loopVar)))
+            let loopVar = helper.code[outerHead].innerOutput(0)
+            let inouts = [loopVar, outerLabel]
+            replacements.append((outerHead, Instruction(newHead, inouts: inouts)))
 
-            let innerLoopVar = helper.code[innerHead].innerOutput
+            let innerLoopVar = helper.code[innerHead].innerOutput(0)
             for instr in helper.code[innerHead..<innerTail] {
                 if instr.inputs.contains(innerLoopVar) {
                     let newInouts = instr.inouts.map({ $0 == innerLoopVar ? loopVar : $0 })
+                    let replacement = Instruction(instr.op, inouts: newInouts)
+                    replacements.append((instr.index, replacement))
+                }
+            }
+        }
+
+        // Redirect all uses of innerLabel to outerLabel
+        for instr in helper.code[innerHead..<innerTail] {
+            if instr.inputs.contains(innerLabel) {
+                // If we already have a replacement for this instruction (because of loop counter rebinding), update it.
+                // Otherwise create a new replacement.
+
+                // We iterate over inouts here, but really the innerLabel can only occur in the inputs of LoopContinue and LoopBreak.
+                if let existingReplacementIdx =
+                    replacements.firstIndex(where: { $0.0 == instr.index })
+                {
+                    // Found: Update the existing instruction
+                    let existingInstr = replacements[existingReplacementIdx].1
+                    let newInouts = existingInstr.inouts.map({
+                        $0 == innerLabel ? outerLabel : $0
+                    })
+                    let replacement = Instruction(
+                        existingInstr.op, inouts: newInouts)
+                    replacements[existingReplacementIdx] = (instr.index, replacement)
+                } else {
+                    // Not Found: Create and append a new instruction
+                    let newInouts = instr.inouts.map({ $0 == innerLabel ? outerLabel : $0 })
                     let replacement = Instruction(instr.op, inouts: newInouts)
                     replacements.append((instr.index, replacement))
                 }

@@ -401,11 +401,11 @@ class ProgramBuilderTests: XCTestCase {
                 // These three variables are hidden but never unhidden.
                 // However, once they go out of scope, they should be deleted
                 // from the `hiddenVariables` set in the ProgramBuilder.
-                XCTAssertEqual(b.numberOfVisibleVariables, 9)
+                XCTAssertEqual(b.numberOfVisibleVariables, 10)
                 b.hide(v2)
                 b.hide(v3)
                 b.hide(v4)
-                XCTAssertEqual(b.numberOfVisibleVariables, 6)
+                XCTAssertEqual(b.numberOfVisibleVariables, 7)
 
                 XCTAssert(!b.visibleVariables.contains(Math))
                 for _ in 0..<10 {
@@ -3368,10 +3368,10 @@ class ProgramBuilderRuntimeDataTests: XCTestCase {
             """
             let v0 = 0;
             do {
-                let v1 = 0;
+                let v2 = 0;
                 do {
-                    ++v1;
-                } while (v1 < 3)
+                    ++v2;
+                } while (v2 < 3)
                 ++v0;
             } while (v0 < 3)
 

@@ -1699,17 +1699,17 @@ class LifterTests: XCTestCase {
                 v11 = v12;
             }
             foo(v11);
-            let v14 = 48;
-            foo(v14 = 49, v14, v14);
-            let v17 = 50;
-            foo(bar(v17 = 51, v17, baz(), v17));
-            let v22 = 52;
-            v22 = [];
-            v22[42] = v22;
-            let v24 = 53;
-            while (v24 = v3, false) {
+            let v15 = 48;
+            foo(v15 = 49, v15, v15);
+            let v18 = 50;
+            foo(bar(v18 = 51, v18, baz(), v18));
+            let v23 = 52;
+            v23 = [];
+            v23[42] = v23;
+            let v25 = 53;
+            while (v25 = v3, false) {
             }
-            foo(v24);
+            foo(v25);
 
             """
 
@@ -3108,10 +3108,10 @@ class LifterTests: XCTestCase {
         let expected = """
             let v0 = 0;
             do {
-                let v1 = 0;
+                let v2 = 0;
                 do {
-                    v1++;
-                } while (f(v1))
+                    v2++;
+                } while (f(v2))
                 v0++;
             } while (v0 < 42)
 
@@ -3204,8 +3204,8 @@ class LifterTests: XCTestCase {
 
         let expected = """
             for (let i1 = 0; i1 < 10; i1++) {
-                for (let i8 = 0; i8 < i1; i8++) {
-                    print(i1, i8);
+                for (let i9 = 0; i9 < i1; i9++) {
+                    print(i1, i9);
                 }
             }
 
@@ -3553,8 +3553,8 @@ class LifterTests: XCTestCase {
         let expected = """
             for (let [v17,,...v18] of [[10,11,12,13,14],[20,21,22,23],[30,31,32]]) {
                 print(v17);
-                for (const v20 of v18) {
-                    print(v20);
+                for (const v21 of v18) {
+                    print(v21);
                 }
             }
 

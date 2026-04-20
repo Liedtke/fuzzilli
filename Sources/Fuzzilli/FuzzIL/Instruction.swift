@@ -2341,7 +2341,7 @@ extension Instruction: ProtobufConvertible {
             // First input is the condition
             op = BeginForLoopAfterthought(numLoopVariables: inouts.count - 1)
         case .beginForLoopBody:
-            op = BeginForLoopBody(numLoopVariables: inouts.count)
+            op = BeginForLoopBody(numLoopVariables: inouts.count - 1)
         case .endForLoop:
             op = EndForLoop()
         case .beginForInLoop:
@@ -2361,9 +2361,9 @@ extension Instruction: ProtobufConvertible {
         case .endRepeatLoop:
             op = EndRepeatLoop()
         case .loopBreak:
-            op = LoopBreak()
+            op = LoopBreak(hasLabel: inouts.count > 0)
         case .loopContinue:
-            op = LoopContinue()
+            op = LoopContinue(hasLabel: inouts.count > 0)
         case .beginTry:
             op = BeginTry()
         case .beginCatch:

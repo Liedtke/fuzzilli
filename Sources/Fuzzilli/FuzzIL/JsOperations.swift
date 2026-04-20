@@ -2186,12 +2186,14 @@ final class BeginWhileLoopHeader: JsOperation {
 }
 
 // The input is the loop condition. This also prevents empty loop headers which are forbidden by the language.
+// The innerOutput is the label of the loop.
 final class BeginWhileLoopBody: JsOperation {
     override var opcode: Opcode { .beginWhileLoopBody(self) }
 
     init() {
         super.init(
-            numInputs: 1, attributes: [.isBlockStart, .isBlockEnd, .propagatesSurroundingContext],
+            numInputs: 1, numInnerOutputs: 1,
+            attributes: [.isBlockStart, .isBlockEnd, .propagatesSurroundingContext],
             contextOpened: [.javascript, .loop])
     }
 }
@@ -2204,11 +2206,13 @@ final class EndWhileLoop: JsOperation {
     }
 }
 
+// The innerOutput is the label of the loop.
 final class BeginDoWhileLoopBody: JsOperation {
     override var opcode: Opcode { .beginDoWhileLoopBody(self) }
 
     init() {
         super.init(
+            numInnerOutputs: 1,
             attributes: [.isBlockStart, .propagatesSurroundingContext],
             contextOpened: [.javascript, .loop])
     }
@@ -2304,16 +2308,17 @@ final class BeginForLoopAfterthought: JsOperation {
     }
 }
 
+// Note: The last innerOutput is the label of the loop.
 final class BeginForLoopBody: JsOperation {
     override var opcode: Opcode { .beginForLoopBody(self) }
 
     var numLoopVariables: Int {
-        return numInnerOutputs
+        return numInnerOutputs - 1
     }
 
     init(numLoopVariables: Int) {
         super.init(
-            numInnerOutputs: numLoopVariables,
+            numInnerOutputs: numLoopVariables + 1,
             attributes: [.isBlockStart, .isBlockEnd, .propagatesSurroundingContext],
             contextOpened: [.javascript, .loop])
     }
@@ -2327,12 +2332,13 @@ final class EndForLoop: JsOperation {
     }
 }
 
+// Note: The last innerOutput is the label of the loop.
 final class BeginForInLoop: JsOperation {
     override var opcode: Opcode { .beginForInLoop(self) }
 
     init() {
         super.init(
-            numInputs: 1, numInnerOutputs: 1,
+            numInputs: 1, numInnerOutputs: 2,
             attributes: [.isBlockStart, .propagatesSurroundingContext],
             contextOpened: [.javascript, .loop])
     }
@@ -2346,17 +2352,19 @@ final class EndForInLoop: JsOperation {
     }
 }
 
+// Note: The last innerOutput is the label of the loop.
 final class BeginForOfLoop: JsOperation {
     override var opcode: Opcode { .beginForOfLoop(self) }
 
     init() {
         super.init(
-            numInputs: 1, numInnerOutputs: 1,
+            numInputs: 1, numInnerOutputs: 2,
             attributes: [.isBlockStart, .propagatesSurroundingContext],
             contextOpened: [.javascript, .loop])
     }
 }
 
+// Note: The last innerOutput is the label of the loop.
 final class BeginForOfLoopWithDestruct: JsOperation {
     override var opcode: Opcode { .beginForOfLoopWithDestruct(self) }
 
@@ -2368,7 +2376,7 @@ final class BeginForOfLoopWithDestruct: JsOperation {
         self.indices = indices
         self.hasRestElement = hasRestElement
         super.init(
-            numInputs: 1, numInnerOutputs: indices.count,
+            numInputs: 1, numInnerOutputs: indices.count + 1,
             attributes: [.isBlockStart, .propagatesSurroundingContext],
             contextOpened: [.javascript, .loop])
     }
@@ -2385,6 +2393,7 @@ final class EndForOfLoop: JsOperation {
 // A loop that simply runs N times and is therefore always guaranteed to terminate.
 // Useful for example to force JIT compilation without creating more complex loops, which can often quickly end up turning into infinite loops due to mutations.
 // These could be lifted simply as `for (let i = 0; i < N; i++) { body() }`
+// Note: The last innerOutput is the label of the loop.
 final class BeginRepeatLoop: JsOperation {
     override var opcode: Opcode { .beginRepeatLoop(self) }
 
@@ -2392,14 +2401,13 @@ final class BeginRepeatLoop: JsOperation {
 
     // Whether the current iteration number is exposed as an inner output variable.
     var exposesLoopCounter: Bool {
-        assert(numInnerOutputs == 0 || numInnerOutputs == 1)
-        return numInnerOutputs == 1
+        return numInnerOutputs == 2
     }
 
     init(iterations: Int, exposesLoopCounter: Bool = true) {
         self.iterations = iterations
         super.init(
-            numInnerOutputs: exposesLoopCounter ? 1 : 0,
+            numInnerOutputs: exposesLoopCounter ? 2 : 1,
             attributes: [.isBlockStart, .propagatesSurroundingContext],
             contextOpened: [.javascript, .loop])
     }
@@ -2416,16 +2424,20 @@ final class EndRepeatLoop: JsOperation {
 final class LoopBreak: JsOperation {
     override var opcode: Opcode { .loopBreak(self) }
 
-    init() {
-        super.init(attributes: [.isJump], requiredContext: [.javascript, .loop])
+    init(hasLabel: Bool = false) {
+        super.init(
+            numInputs: hasLabel ? 1 : 0, attributes: [.isJump],
+            requiredContext: [.javascript, .loop])
     }
 }
 
 final class LoopContinue: JsOperation {
     override var opcode: Opcode { .loopContinue(self) }
 
-    init() {
-        super.init(attributes: [.isJump], requiredContext: [.javascript, .loop])
+    init(hasLabel: Bool = false) {
+        super.init(
+            numInputs: hasLabel ? 1 : 0, attributes: [.isJump],
+            requiredContext: [.javascript, .loop])
     }
 }
 

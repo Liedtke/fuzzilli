@@ -2134,25 +2134,35 @@ public struct JSTyper: Analyzer {
             zip(instr.innerOutputs, inputTypes).forEach({ set($0, $1) })
 
         case .beginForLoopBody:
-            let inputTypes = activeForLoopVariableTypes.pop()
+            let inputTypes = activeForLoopVariableTypes.pop() + [.jsLoopLabel]
             assert(inputTypes.count == instr.numInnerOutputs)
             zip(instr.innerOutputs, inputTypes).forEach({ set($0, $1) })
 
+        case .beginWhileLoopBody:
+            set(instr.innerOutput, .jsLoopLabel)
+
+        case .beginDoWhileLoopBody:
+            set(instr.innerOutput, .jsLoopLabel)
+
         case .beginForInLoop:
-            set(instr.innerOutput, .string)
+            set(instr.innerOutput(0), .string)
+            set(instr.innerOutput(1), .jsLoopLabel)
 
         case .beginForOfLoop:
-            set(instr.innerOutput, .jsAnything)
+            set(instr.innerOutput(0), .jsAnything)
+            set(instr.innerOutput(1), .jsLoopLabel)
 
         case .beginForOfLoopWithDestruct:
-            for v in instr.innerOutputs {
+            for v in instr.innerOutputs.dropLast() {
                 set(v, .jsAnything)
             }
+            set(instr.innerOutputs.last!, .jsLoopLabel)
 
         case .beginRepeatLoop(let op):
             if op.exposesLoopCounter {
-                set(instr.innerOutput, .integer)
+                set(instr.innerOutput(0), .integer)
             }
+            set(instr.innerOutputs.last!, .jsLoopLabel)
 
         case .beginCatch:
             set(instr.innerOutput, .jsAnything)

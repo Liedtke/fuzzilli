@@ -296,7 +296,7 @@ public struct Code: Collection {
                         throw FuzzilliError.codeVerificationError("for-loop header is inconsistent")
                     }
                 } else if instr.op is BeginForLoopBody {
-                    guard instr.numInnerOutputs == forLoopHeaderStack.pop() else {
+                    guard instr.numInnerOutputs == forLoopHeaderStack.pop() + 1 else {
                         throw FuzzilliError.codeVerificationError("for-loop header is inconsistent")
                     }
                 }

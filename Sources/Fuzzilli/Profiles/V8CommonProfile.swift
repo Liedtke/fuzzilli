@@ -177,7 +177,7 @@ public let ForceOsrGenerator = CodeGenerator(
             provides: [.javascript]
         ) { b in
             let numIterations = Int.random(in: 2...50)
-            let loopVar = b.emit(BeginRepeatLoop(iterations: numIterations)).innerOutput
+            let loopVar = b.emit(BeginRepeatLoop(iterations: numIterations)).innerOutput(0)
             let condition = b.compare(
                 loopVar, with: b.loadInt(Int64.random(in: 0..<Int64(numIterations))),
                 using: .equal)

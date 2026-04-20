@@ -2640,7 +2640,7 @@ public class ProgramBuilder {
             inouts.append(nextVariable())
         }
 
-        // For WasmOperations, we can assert here that the input types are correct.
+        // We can assert here that the input types are correct.
         if let expectedTypes = types {
             // TODO: try to make sure that mutations don't change the assumptions while ProgramBuilding.
             if inputs.count != expectedTypes.count {
@@ -3924,26 +3924,34 @@ public class ProgramBuilder {
         emit(SwitchBreak())
     }
 
-    public func buildWhileLoop(_ header: () -> Variable, _ body: () -> Void) {
+    public func buildWhileLoop(_ header: () -> Variable, _ body: (Variable) -> Void) {
         emit(BeginWhileLoopHeader())
         let cond = header()
-        emit(BeginWhileLoopBody(), withInputs: [cond])
-        body()
+        let label = emit(BeginWhileLoopBody(), withInputs: [cond]).innerOutput
+        body(label)
         emit(EndWhileLoop())
     }
 
-    public func buildDoWhileLoop(do body: () -> Void, while header: () -> Variable) {
-        emit(BeginDoWhileLoopBody())
-        body()
+    public func buildWhileLoop(_ header: () -> Variable, _ body: () -> Void) {
+        buildWhileLoop(header) { _ in body() }
+    }
+
+    public func buildDoWhileLoop(do body: (Variable) -> Void, while header: () -> Variable) {
+        let label = emit(BeginDoWhileLoopBody()).innerOutput
+        body(label)
         emit(BeginDoWhileLoopHeader())
         let cond = header()
         emit(EndDoWhileLoop(), withInputs: [cond])
     }
 
+    public func buildDoWhileLoop(do body: () -> Void, while header: () -> Variable) {
+        buildDoWhileLoop(do: { _ in body() }, while: header)
+    }
+
     // Build a simple for loop that declares one loop variable.
     public func buildForLoop(
         i initializer: () -> Variable, _ cond: (Variable) -> Variable,
-        _ afterthought: (Variable) -> Void, _ body: (Variable) -> Void
+        _ afterthought: (Variable) -> Void, _ body: (Variable, Variable) -> Void
     ) {
         emit(BeginForLoopInitializer())
         let initialValue = initializer()
@@ -3953,9 +3961,16 @@ public class ProgramBuilder {
         loopVar =
             emit(BeginForLoopAfterthought(numLoopVariables: 1), withInputs: [cond]).innerOutput
         afterthought(loopVar)
-        loopVar = emit(BeginForLoopBody(numLoopVariables: 1)).innerOutput
-        body(loopVar)
+        let instr = emit(BeginForLoopBody(numLoopVariables: 1))
+        body(instr.innerOutput(0), instr.innerOutput(1))
         emit(EndForLoop())
+    }
+
+    public func buildForLoop(
+        i initializer: () -> Variable, _ cond: (Variable) -> Variable,
+        _ afterthought: (Variable) -> Void, _ body: (Variable) -> Void
+    ) {
+        buildForLoop(i: initializer, cond, afterthought) { i, _ in body(i) }
     }
 
     // Build arbitrarily complex for loops without any loop variables.
@@ -3991,19 +4006,41 @@ public class ProgramBuilder {
             ).innerOutputs
         afterthought?(Array(loopVars))
         loopVars = emit(BeginForLoopBody(numLoopVariables: initialValues.count)).innerOutputs
+            .dropLast()
         body(Array(loopVars))
         emit(EndForLoop())
     }
 
-    public func buildForInLoop(_ obj: Variable, _ body: (Variable) -> Void) {
-        let i = emit(BeginForInLoop(), withInputs: [obj]).innerOutput
-        body(i)
+    public func buildForInLoop(_ obj: Variable, _ body: (Variable, Variable) -> Void) {
+        let instr = emit(BeginForInLoop(), withInputs: [obj])
+        body(instr.innerOutput(0), instr.innerOutput(1))
         emit(EndForInLoop())
     }
 
+    public func buildForInLoop(_ obj: Variable, _ body: (Variable) -> Void) {
+        buildForInLoop(obj) { i, _ in body(i) }
+    }
+
+    public func buildForOfLoop(_ obj: Variable, _ body: (Variable, Variable) -> Void) {
+        let instr = emit(BeginForOfLoop(), withInputs: [obj])
+        body(instr.innerOutput(0), instr.innerOutput(1))
+        emit(EndForOfLoop())
+    }
+
     public func buildForOfLoop(_ obj: Variable, _ body: (Variable) -> Void) {
-        let i = emit(BeginForOfLoop(), withInputs: [obj]).innerOutput
-        body(i)
+        buildForOfLoop(obj) { i, _ in body(i) }
+    }
+
+    public func buildForOfLoop(
+        _ obj: Variable, selecting indices: [Int64], hasRestElement: Bool = false,
+        _ body: ([Variable], Variable) -> Void
+    ) {
+        let instr = emit(
+            BeginForOfLoopWithDestruct(indices: indices, hasRestElement: hasRestElement),
+            withInputs: [obj])
+        let label = instr.innerOutputs.last!
+        let vars = instr.innerOutputs.dropLast()
+        body(Array(vars), label)
         emit(EndForOfLoop())
     }
 
@@ -4011,17 +4048,19 @@ public class ProgramBuilder {
         _ obj: Variable, selecting indices: [Int64], hasRestElement: Bool = false,
         _ body: ([Variable]) -> Void
     ) {
-        let instr = emit(
-            BeginForOfLoopWithDestruct(indices: indices, hasRestElement: hasRestElement),
-            withInputs: [obj])
-        body(Array(instr.innerOutputs))
-        emit(EndForOfLoop())
+        buildForOfLoop(obj, selecting: indices, hasRestElement: hasRestElement) { vars, _ in
+            body(vars)
+        }
+    }
+
+    public func buildRepeatLoop(n numIterations: Int, _ body: (Variable, Variable) -> Void) {
+        let instr = emit(BeginRepeatLoop(iterations: numIterations))
+        body(instr.innerOutput(0), instr.innerOutput(1))
+        emit(EndRepeatLoop())
     }
 
     public func buildRepeatLoop(n numIterations: Int, _ body: (Variable) -> Void) {
-        let i = emit(BeginRepeatLoop(iterations: numIterations)).innerOutput
-        body(i)
-        emit(EndRepeatLoop())
+        buildRepeatLoop(n: numIterations) { i, _ in body(i) }
     }
 
     public func buildRepeatLoop(n numIterations: Int, _ body: () -> Void) {
@@ -4030,12 +4069,20 @@ public class ProgramBuilder {
         emit(EndRepeatLoop())
     }
 
-    public func loopBreak() {
-        emit(LoopBreak())
+    public func loopBreak(_ label: Variable? = nil) {
+        if let label {
+            emit(LoopBreak(hasLabel: true), withInputs: [label], types: [.jsLoopLabel])
+        } else {
+            emit(LoopBreak())
+        }
     }
 
-    public func loopContinue() {
-        emit(LoopContinue(), withInputs: [])
+    public func loopContinue(_ label: Variable? = nil) {
+        if let label {
+            emit(LoopContinue(hasLabel: true), withInputs: [label], types: [.jsLoopLabel])
+        } else {
+            emit(LoopContinue())
+        }
     }
 
     public func buildTryCatchFinally(

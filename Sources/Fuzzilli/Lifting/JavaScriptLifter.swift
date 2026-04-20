@@ -1293,7 +1293,8 @@ public class JavaScriptLifter: Lifter {
 
             case .beginWhileLoopBody:
                 let COND = handleEndSingleExpressionContext(result: input(0), with: &w)
-                w.emitBlock("while (\(COND)) {")
+                let prefix = w.labelPrefix(for: instr.innerOutput)
+                w.emitBlock("\(prefix)while (\(COND)) {")
                 w.enterNewBlock()
 
             case .endWhileLoop:
@@ -1301,7 +1302,8 @@ public class JavaScriptLifter: Lifter {
                 w.emit("}")
 
             case .beginDoWhileLoopBody:
-                w.emit("do {")
+                let prefix = w.labelPrefix(for: instr.innerOutput)
+                w.emitBlock("\(prefix)do {")
                 w.enterNewBlock()
 
             case .beginDoWhileLoopHeader:
@@ -1390,22 +1392,25 @@ public class JavaScriptLifter: Lifter {
                 var CONDITION = header.condition
                 var AFTERTHOUGHT = handleEndSingleExpressionContext(with: &w)
 
+                let labelVar = instr.innerOutput(instr.numInnerOutputs - 1)
+                let prefix = w.labelPrefix(for: labelVar)
+
                 if !INITIALIZER.contains("\n") && !CONDITION.contains("\n")
                     && !AFTERTHOUGHT.contains("\n")
                 {
                     if !CONDITION.isEmpty { CONDITION = " " + CONDITION }
                     if !AFTERTHOUGHT.isEmpty { AFTERTHOUGHT = " " + AFTERTHOUGHT }
-                    w.emit("for (\(INITIALIZER);\(CONDITION);\(AFTERTHOUGHT)) {")
+                    w.emit("\(prefix)for (\(INITIALIZER);\(CONDITION);\(AFTERTHOUGHT)) {")
                 } else {
                     w.emitBlock(
                         """
-                        for (\(INITIALIZER);
+                        \(prefix)for (\(INITIALIZER);
                             \(CONDITION);
                             \(AFTERTHOUGHT)) {
                         """)
                 }
 
-                w.declareAll(instr.innerOutputs, as: header.loopVariables)
+                w.declareAll(instr.innerOutputs.dropLast(), as: header.loopVariables)
                 w.enterNewBlock()
 
             case .endForLoop:
@@ -1413,10 +1418,14 @@ public class JavaScriptLifter: Lifter {
                 w.emit("}")
 
             case .beginForInLoop:
-                let LET = w.declarationKeyword(for: instr.innerOutput)
-                let V = w.declare(instr.innerOutput)
+                let LET = w.declarationKeyword(for: instr.innerOutput(0))
+                let V = w.declare(instr.innerOutput(0))
                 let OBJ = input(0)
-                w.emit("for (\(LET) \(V) in \(OBJ)) {")
+
+                let labelVar = instr.innerOutputs.last!
+                let prefix = w.labelPrefix(for: labelVar)
+
+                w.emit("\(prefix)for (\(LET) \(V) in \(OBJ)) {")
                 w.enterNewBlock()
 
             case .endForInLoop:
@@ -1424,19 +1433,27 @@ public class JavaScriptLifter: Lifter {
                 w.emit("}")
 
             case .beginForOfLoop:
-                let V = w.declare(instr.innerOutput)
-                let LET = w.declarationKeyword(for: instr.innerOutput)
+                let V = w.declare(instr.innerOutput(0))
+                let LET = w.declarationKeyword(for: instr.innerOutput(0))
                 let OBJ = input(0)
-                w.emit("for (\(LET) \(V) of \(OBJ)) {")
+
+                let labelVar = instr.innerOutputs.last!
+                let prefix = w.labelPrefix(for: labelVar)
+
+                w.emit("\(prefix)for (\(LET) \(V) of \(OBJ)) {")
                 w.enterNewBlock()
 
             case .beginForOfLoopWithDestruct(let op):
-                let outputs = w.declareAll(instr.innerOutputs)
+                let outputs = w.declareAll(instr.innerOutputs.dropLast())
                 let PATTERN = liftArrayDestructPattern(
                     indices: op.indices, outputs: outputs, hasRestElement: op.hasRestElement)
                 let LET = w.varKeyword
                 let OBJ = input(0)
-                w.emit("for (\(LET) [\(PATTERN)] of \(OBJ)) {")
+
+                let labelVar = instr.innerOutputs.last!
+                let prefix = w.labelPrefix(for: labelVar)
+
+                w.emit("\(prefix)for (\(LET) [\(PATTERN)] of \(OBJ)) {")
                 w.enterNewBlock()
 
             case .endForOfLoop:
@@ -1447,24 +1464,38 @@ public class JavaScriptLifter: Lifter {
                 let LET = w.varKeyword
                 let I: String
                 if op.exposesLoopCounter {
-                    I = w.declare(instr.innerOutput)
+                    I = w.declare(instr.innerOutput(0))
                 } else {
                     I = "i"
                 }
+
+                let labelVar = instr.innerOutputs.last!
+                let prefix = w.labelPrefix(for: labelVar)
+
                 let ITERATIONS = op.iterations
-                w.emit("for (\(LET) \(I) = 0; \(I) < \(ITERATIONS); \(I)++) {")
+                w.emit("\(prefix)for (\(LET) \(I) = 0; \(I) < \(ITERATIONS); \(I)++) {")
                 w.enterNewBlock()
 
             case .endRepeatLoop:
                 w.leaveCurrentBlock()
                 w.emit("}")
 
-            case .loopBreak(_),
-                .switchBreak:
+            case .loopBreak(_):
+                if instr.hasInputs {
+                    w.emit("break \(input(0));")
+                } else {
+                    w.emit("break;")
+                }
+
+            case .switchBreak:
                 w.emit("break;")
 
             case .loopContinue:
-                w.emit("continue;")
+                if instr.hasInputs {
+                    w.emit("continue \(input(0));")
+                } else {
+                    w.emit("continue;")
+                }
 
             case .beginTry:
                 w.emit("try {")
@@ -2464,6 +2495,15 @@ public class JavaScriptLifter: Lifter {
                 assert(analyzer.numAssignments(of: v) > 1)
                 return varKeyword
             }
+        }
+
+        /// Returns a label prefix (e.g. "L1: ") if the label variable is used, otherwise an empty string.
+        mutating func labelPrefix(for labelVar: Variable) -> String {
+            if analyzer.numUses(of: labelVar) > 0 {
+                let label = declare(labelVar, as: "L" + String(labelVar.number))
+                return "\(label): "
+            }
+            return ""
         }
 
         mutating func enterNewBlock() {
