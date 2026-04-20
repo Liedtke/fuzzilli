@@ -32,9 +32,13 @@ public class ContextGraph {
     public struct GeneratorEdge {
         var generators: [CodeGenerator] = []
 
+        // How many generator stubs we at *most* need to schedule for this edge.
+        public var weight: Int = 0
+
         // Adds a generator to this Edge.
         public mutating func addGenerator(_ generator: CodeGenerator) {
             generators.append(generator)
+            weight = max(weight, generator.parts.count)
         }
     }
 
@@ -134,49 +138,50 @@ public class ContextGraph {
         }
     }
 
-    /// Gets all possible paths from the `from` Context to the `to` Context.
+    /// Get a shortest path (the least amount of generator stubs) from the `from` Context to the `to` Context. Returns an arbitrary one if there are several.
     /// TODO: Do this initially and cache all results?
-    func getAllPaths(from src: Context, to dst: Context) -> [[EdgeKey]] {
-        // Do simple BFS to find all possible paths.
-        var queue: Deque<[Context]> = [[src]]
-        var paths: [[Context]] = []
-        var seenNodes = Set<Context>([src])
+    func getShortestPath(from src: Context, to dst: Context) -> [EdgeKey]? {
+        // Do simple BFS to find a shortest path, considering the edge weights.
+        var queue: Deque<([Context], Int)> = [([src], 0)]
+        var seenNodes: [Context: Int] = [:]
 
+        var maybeFoundPath: [Context]? = nil
+        var foundWeight = Int.max
         while !queue.isEmpty {
-            // use popFirst here from the deque.
-            let currentPath = queue.popFirst()!
+            let (currentPath, currentWeight) = queue.popFirst()!
 
             let currentNode = currentPath.last!
 
             if currentNode == dst {
-                paths.append(currentPath)
+                if currentWeight < foundWeight {
+                    maybeFoundPath = currentPath
+                    foundWeight = currentWeight
+                }
+                continue
             }
 
             // Get all possible edges from here on and push all of those to the queue.
             for edge in self.edges
-            where edge.key.from == currentNode && !seenNodes.contains(edge.key.to) {
-                // Prevent cycles, we don't care about complicated paths, but rather simple direct paths.
-                seenNodes.insert(edge.key.to)
-                queue.append(currentPath + [edge.key.to])
+            where edge.key.from == currentNode {
+                let endpoint = edge.key.to
+                let totalWeight = currentWeight + edge.value.weight
+                if let oldWeight = seenNodes[endpoint] {
+                    if oldWeight <= totalWeight {
+                        // We've already found a shorter or equally short path to `endpoint`.
+                        continue
+                    }
+                }
+                seenNodes[endpoint] = totalWeight
+                queue.append((currentPath + [endpoint], totalWeight))
             }
         }
 
-        if paths.isEmpty {
-            return []
+        guard let foundPath = maybeFoundPath else {
+            return nil
         }
 
-        // Reduce this to Edges structs that we can easily look up.
-        var edgePaths: [[EdgeKey]] = []
-        for path in paths {
-            var edgePath: [EdgeKey] = []
-            for i in 0..<(path.count - 1) {
-                let edge = EdgeKey(from: path[i], to: path[i + 1])
-                edgePath.append(edge)
-            }
-            edgePaths.append(edgePath)
-        }
-
-        return edgePaths
+        // Reduce foundPath to Edges structs that we can easily look up.
+        return zip(foundPath, foundPath[1...]).map(EdgeKey.init)
     }
 
     func getGenerators(from src: Context, to dst: Context) -> GeneratorEdge? {
@@ -227,19 +232,15 @@ public class ContextGraph {
 
     // The return value is a list of possible Paths.
     // A Path is a possible way from one context to another.
-    public func getCodeGeneratorPaths(from src: Context, to dst: Context) -> [Path]? {
+    public func getShortestCodeGeneratorPath(from src: Context, to dst: Context) -> Path? {
 
-        let paths = getAllPaths(from: src, to: dst)
-
-        if paths.isEmpty {
+        guard let path = getShortestPath(from: src, to: dst) else {
             return nil
         }
 
-        return paths.map { edges in
-            Path(
-                edges: edges.map { edge in
-                    self.edges[edge]!
-                })
-        }
+        return Path(
+            edges: path.map { edge in
+                self.edges[edge]!
+            })
     }
 }

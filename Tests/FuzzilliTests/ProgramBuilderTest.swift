@@ -3293,10 +3293,7 @@ class ProgramBuilderTests: XCTestCase {
         }
     }
 
-    func testThatBundleGeneratorsAreBuildableFromBundle() throws {
-        // TODO(mliedtke,marja): Investigate how we can make the code generator scheduling more
-        // reliable.
-        if true { throw XCTSkip("Test case is flaky") }
+    func testThatGeneratorsAreBuildableFromBundle() throws {
         let config = Configuration(generateBundle: true)
         let fuzzer = makeMockFuzzer(config: config)
         let tries: Int = 10

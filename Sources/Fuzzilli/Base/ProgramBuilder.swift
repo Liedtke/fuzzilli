@@ -2474,10 +2474,12 @@ public class ProgramBuilder {
 
             if context.contains(possibleContext) {
                 // Walk through generated Graph and find a path.
-                let paths =
-                    fuzzer.contextGraph.getCodeGeneratorPaths(
-                        from: possibleContext, to: mainGenerator.requiredContext) ?? []
-                return pathArray + paths
+                if let path =
+                    fuzzer.contextGraph.getShortestCodeGeneratorPath(
+                        from: possibleContext, to: mainGenerator.requiredContext)
+                {
+                    return pathArray + [path]
+                }
             }
 
             return pathArray
