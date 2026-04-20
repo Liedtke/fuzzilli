@@ -22,7 +22,7 @@ func testExecuteScript(program: String, runner: JavaScriptExecutor) -> JavaScrip
     do {
         result = try runner.executeScript(program)
     } catch {
-        fatalError("Could not execute Script")
+        fatalError("Could not execute script: \(error)")
     }
     return result
 }
