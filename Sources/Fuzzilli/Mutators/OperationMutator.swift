@@ -727,6 +727,7 @@ public class OperationMutator: BaseInstructionMutator {
             .endCodeString(_),
             .beginBlockStatement(_),
             .endBlockStatement(_),
+            .blockBreak(_),
             .beginSwitch(_),
             .beginSwitchCase(_),
             .beginSwitchDefaultCase(_),

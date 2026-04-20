@@ -3570,10 +3570,10 @@ class LifterTests: XCTestCase {
         let v0 = b.loadInt(1337)
         let v1 = b.createObject(with: ["a": v0])
         b.buildForInLoop(v1) { v2 in
-            b.blockStatement {
+            b.buildBlockStatement {
                 let v3 = b.loadInt(1337)
                 b.reassign(variable: v2, value: v3)
-                b.blockStatement {
+                b.buildBlockStatement {
                     let v4 = b.createObject(with: ["a": v1])
                     b.reassign(variable: v2, value: v4)
                 }

@@ -799,6 +799,9 @@ message BeginBlockStatement {
 message EndBlockStatement {
 }
 
+message BlockBreak {
+}
+
 message Nop {
 }
 

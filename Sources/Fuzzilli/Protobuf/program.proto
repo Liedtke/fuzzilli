@@ -361,6 +361,7 @@ message Instruction {
         EndClassComputedSetter endClassComputedSetter = 335;
         BeginBundleScript beginBundleScript = 336;
         EndBundleScript endBundleScript = 337;
+        BlockBreak blockBreak = 338;
     }
 }
 

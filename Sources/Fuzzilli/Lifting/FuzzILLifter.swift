@@ -778,6 +778,9 @@ public class FuzzILLifter: Lifter {
                 w.emit("Break")
             }
 
+        case .blockBreak:
+            w.emit("BlockBreak \(input(0))")
+
         case .loopContinue:
             if instr.hasInputs {
                 w.emit("Continue \(input(0))")
@@ -815,7 +818,7 @@ public class FuzzILLifter: Lifter {
             w.emit("EndCodeString")
 
         case .beginBlockStatement:
-            w.emit("BeginBlockStatement")
+            w.emit("BeginBlockStatement  -> \(lift(instr.innerOutput))")
             w.increaseIndentionLevel()
 
         case .endBlockStatement:

@@ -3077,13 +3077,19 @@ public let CodeGenerators: [CodeGenerator] = [
     CodeGenerator(
         "BlockStatementGenerator",
         [
-            GeneratorStub("BlockStatementBeginGenerator") { b in
+            GeneratorStub("BlockStatementBeginGenerator", provides: [.javascript]) { b in
                 b.emit(BeginBlockStatement())
             },
-            GeneratorStub("BlockStatementEndGenerator") { b in
+            GeneratorStub(
+                "BlockStatementEndGenerator", inContext: .single([.javascript])
+            ) { b in
                 b.emit(EndBlockStatement())
             },
         ]),
+
+    CodeGenerator("BlockBreakGenerator", inputs: .required(.jsBlockLabel)) { b, label in
+        b.blockBreak(label)
+    },
 
     CodeGenerator("NumberComputationGenerator") { b in
         // Generate a sequence of 3-7 random number computations on a couple of existing variables and some newly created constants.

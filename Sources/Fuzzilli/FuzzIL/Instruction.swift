@@ -1151,6 +1151,8 @@ extension Instruction: ProtobufConvertible {
                 $0.beginBlockStatement = Fuzzilli_Protobuf_BeginBlockStatement()
             case .endBlockStatement:
                 $0.endBlockStatement = Fuzzilli_Protobuf_EndBlockStatement()
+            case .blockBreak:
+                $0.blockBreak = Fuzzilli_Protobuf_BlockBreak()
             case .loadNewTarget:
                 $0.loadNewTarget = Fuzzilli_Protobuf_LoadNewTarget()
             case .beginWasmModule:
@@ -2382,6 +2384,8 @@ extension Instruction: ProtobufConvertible {
             op = BeginBlockStatement()
         case .endBlockStatement:
             op = EndBlockStatement()
+        case .blockBreak:
+            op = BlockBreak()
         case .beginBundleScript:
             op = BeginBundleScript()
         case .endBundleScript:

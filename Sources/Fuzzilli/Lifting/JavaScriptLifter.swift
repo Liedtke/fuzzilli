@@ -1487,6 +1487,9 @@ public class JavaScriptLifter: Lifter {
                     w.emit("break;")
                 }
 
+            case .blockBreak(_):
+                w.emit("break \(input(0));")
+
             case .switchBreak:
                 w.emit("break;")
 
@@ -1539,7 +1542,8 @@ public class JavaScriptLifter: Lifter {
                 w.emit("\(ESCAPE)`;")
 
             case .beginBlockStatement:
-                w.emit("{")
+                let prefix = w.labelPrefix(for: instr.innerOutput)
+                w.emitBlock("\(prefix){")
                 w.enterNewBlock()
 
             case .endBlockStatement:

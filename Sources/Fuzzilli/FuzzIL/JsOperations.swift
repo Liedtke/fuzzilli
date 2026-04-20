@@ -2506,7 +2506,9 @@ final class BeginBlockStatement: JsOperation {
 
     init() {
         super.init(
-            attributes: [.isBlockStart, .propagatesSurroundingContext], contextOpened: .javascript)
+            numInnerOutputs: 1,
+            attributes: [.isBlockStart, .propagatesSurroundingContext],
+            contextOpened: [.javascript])
     }
 }
 
@@ -2515,6 +2517,17 @@ final class EndBlockStatement: JsOperation {
 
     init() {
         super.init(attributes: [.isBlockEnd])
+    }
+}
+
+final class BlockBreak: JsOperation {
+    override var opcode: Opcode { .blockBreak(self) }
+
+    // Block break statements always need to reference a label. "break;" is not allowed here.
+    init() {
+        super.init(
+            numInputs: 1, attributes: [.isJump],
+            requiredContext: [.javascript])
     }
 }
 

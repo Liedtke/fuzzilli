@@ -342,13 +342,13 @@ class ProgramBuilderTests: XCTestCase {
         let fuzzer = makeMockFuzzer()
         let b = fuzzer.makeBuilder()
 
-        b.blockStatement {
+        b.buildBlockStatement {
             let var1 = b.loadString("HelloWorld")
             XCTAssertEqual(b.findVariable(satisfying: { $0 == var1 }), var1)
-            b.blockStatement {
+            b.buildBlockStatement {
                 let var2 = b.loadFloat(13.37)
                 XCTAssertEqual(b.findVariable(satisfying: { $0 == var2 }), var2)
-                b.blockStatement {
+                b.buildBlockStatement {
                     let var3 = b.loadInt(100)
                     XCTAssertEqual(b.findVariable(satisfying: { $0 == var3 }), var3)
                 }

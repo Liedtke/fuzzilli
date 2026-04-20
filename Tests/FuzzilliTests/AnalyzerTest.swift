@@ -312,7 +312,7 @@ class AnalyzerTests: XCTestCase {
                     XCTAssertEqual(b.context, [.javascript, .subroutine])
                 })
 
-            b.blockStatement {
+            b.buildBlockStatement {
                 XCTAssertEqual(b.context, [.javascript, .subroutine])
             }
         }

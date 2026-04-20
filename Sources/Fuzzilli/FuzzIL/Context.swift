@@ -74,6 +74,8 @@ public struct Context: OptionSet, Hashable, CaseIterable {
     public static let wasmTypeGroup = Context(rawValue: 1 << 13)
     // Inside a bundle containing multiple scripts / modules
     public static let bundle = Context(rawValue: 1 << 14)
+    // Inside a block statement.
+    public static let blockStatement = Context(rawValue: 1 << 15)
 
     public static let empty = Context([])
 

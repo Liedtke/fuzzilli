@@ -195,6 +195,7 @@ public let codeGeneratorWeights = [
     "ThrowGenerator":                           1,
     "ConditionalThrowGenerator":                1,
     "BlockStatementGenerator":                  1,
+    "BlockBreakGenerator":                      5,
 
     // Special generators
     "WellKnownPropertyLoadGenerator":           5,

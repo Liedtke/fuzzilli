@@ -4116,10 +4116,18 @@ public class ProgramBuilder {
         return instr.output
     }
 
-    public func blockStatement(_ body: () -> Void) {
-        emit(BeginBlockStatement())
-        body()
+    public func buildBlockStatement(_ body: (Variable) -> Void) {
+        let label = emit(BeginBlockStatement()).innerOutput
+        body(label)
         emit(EndBlockStatement())
+    }
+
+    public func buildBlockStatement(_ body: () -> Void) {
+        buildBlockStatement { _ in body() }
+    }
+
+    public func blockBreak(_ label: Variable) {
+        emit(BlockBreak(), withInputs: [label])
     }
 
     public func maybeWrapInsideBundleScript(_ body: () -> Void) {

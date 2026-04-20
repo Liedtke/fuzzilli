@@ -241,6 +241,9 @@ public struct ILType: Hashable {
     /// A label for a statement, e.g. for break and continue.
     public static let jsLoopLabel: ILType = ILType(definiteType: .jsLoopLabel)
 
+    /// A label for a block statement, as a target for break.
+    public static let jsBlockLabel: ILType = ILType(definiteType: .jsBlockLabel)
+
     public static func wasmMemory(limits: Limits, isShared: Bool = false, isMemory64: Bool = false)
         -> ILType
     {
@@ -1255,6 +1258,8 @@ extension ILType: CustomStringConvertible {
             return ".wasmLabel"
         case .jsLoopLabel:
             return ".jsLoopLabel"
+        case .jsBlockLabel:
+            return ".jsBlockLabel"
         case .wasmRef:
             guard let refType = self.wasmReferenceType else {
                 return ".wasmGenericRef"
@@ -1367,6 +1372,9 @@ struct BaseType: OptionSet, Hashable {
     // A label for a statement, e.g. for break and continue.
     static let jsLoopLabel = BaseType(rawValue: 1 << 26)
 
+    // A label for a block, as a target for break.
+    static let jsBlockLabel = BaseType(rawValue: 1 << 27)
+
     static let jsAnything = BaseType([
         .undefined, .integer, .float, .string, .boolean, .object, .function, .constructor,
         .unboundFunction, .bigint, .regexp, .iterable,
@@ -1380,7 +1388,7 @@ struct BaseType: OptionSet, Hashable {
     static let allBaseTypes: [BaseType] = [
         .undefined, .integer, .float, .string, .boolean, .object, .function, .constructor,
         .unboundFunction, .bigint, .regexp, .iterable, .wasmf32, .wasmi32, .wasmf64, .wasmi64,
-        .wasmRef, .wasmSimd128, .wasmTypeDef, .wasmFunctionDef, .jsLoopLabel,
+        .wasmRef, .wasmSimd128, .wasmTypeDef, .wasmFunctionDef, .jsLoopLabel, .jsBlockLabel,
     ]
 }
 

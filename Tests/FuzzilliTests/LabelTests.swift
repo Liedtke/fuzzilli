@@ -250,4 +250,49 @@ class LabelTests: XCTestCase {
             """
         XCTAssertEqual(actual, expected)
     }
+
+    func testBlockStatementLabel() {
+        let fuzzer = makeMockFuzzer()
+        let b = fuzzer.makeBuilder()
+
+        b.buildBlockStatement { label in
+            XCTAssertEqual(b.type(of: label), .jsBlockLabel)
+            b.blockBreak(label)
+        }
+
+        let program = b.finalize()
+        let actual = fuzzer.lifter.lift(program)
+        let expected = """
+            L0: {
+                break L0;
+            }
+
+            """
+        XCTAssertEqual(actual, expected)
+    }
+
+    func testNestedBlockStatementLabels() {
+        let fuzzer = makeMockFuzzer()
+        let b = fuzzer.makeBuilder()
+
+        b.buildBlockStatement { label1 in
+            b.buildBlockStatement { label2 in
+                b.blockBreak(label1)
+                b.blockBreak(label2)
+            }
+        }
+
+        let program = b.finalize()
+        let actual = fuzzer.lifter.lift(program)
+        let expected = """
+            L0: {
+                L1: {
+                    break L0;
+                    break L1;
+                }
+            }
+
+            """
+        XCTAssertEqual(actual, expected)
+    }
 }
