@@ -502,4 +502,91 @@ class LabelTests: XCTestCase {
             }
         }
     }
+
+    func testSwitchNoLabel() {
+        let fuzzer = makeMockFuzzer()
+        let b = fuzzer.makeBuilder()
+
+        let v = b.loadInt(42)
+        let case1 = b.loadInt(1)
+        b.buildSwitch(on: v) { sw in
+            sw.addCase(case1, fallsThrough: true) {
+                b.switchBreak()
+            }
+        }
+
+        let program = b.finalize()
+        let actual = fuzzer.lifter.lift(program)
+        let expected = """
+            switch (42) {
+                case 1:
+                    break;
+            }
+
+            """
+        XCTAssertEqual(actual, expected)
+    }
+
+    func testSwitchLabel() {
+        let fuzzer = makeMockFuzzer()
+        let b = fuzzer.makeBuilder()
+
+        let v = b.loadInt(42)
+        let case1 = b.loadInt(1)
+        b.buildSwitch(on: v) { sw, label in
+            XCTAssertEqual(b.type(of: label), .jsBlockLabel)
+            sw.addCase(case1, fallsThrough: true) {
+                b.blockBreak(label)
+            }
+            sw.addDefaultCase(fallsThrough: true) {
+                b.blockBreak(label)
+            }
+        }
+
+        let program = b.finalize()
+        let actual = fuzzer.lifter.lift(program)
+        let expected = """
+            L2: switch (42) {
+                case 1:
+                    break L2;
+                default:
+                    break L2;
+            }
+
+            """
+        XCTAssertEqual(actual, expected)
+    }
+
+    func testNestedSwitchLabel() {
+        let fuzzer = makeMockFuzzer()
+        let b = fuzzer.makeBuilder()
+
+        let v1 = b.loadInt(1)
+        let v2 = b.loadInt(2)
+        let case1 = b.loadInt(1)
+        let case2 = b.loadInt(2)
+        b.buildSwitch(on: v1) { sw1, label1 in
+            sw1.addCase(case1, fallsThrough: true) {
+                b.buildSwitch(on: v2) { sw2, label2 in
+                    sw2.addCase(case2, fallsThrough: true) {
+                        b.blockBreak(label1)
+                    }
+                }
+            }
+        }
+
+        let program = b.finalize()
+        let actual = fuzzer.lifter.lift(program)
+        let expected = """
+            L4: switch (1) {
+                case 1:
+                    switch (2) {
+                        case 2:
+                            break L4;
+                    }
+            }
+
+            """
+        XCTAssertEqual(actual, expected)
+    }
 }

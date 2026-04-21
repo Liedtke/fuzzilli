@@ -2588,7 +2588,11 @@ final class BeginSwitch: JsOperation {
     override var opcode: Opcode { .beginSwitch(self) }
 
     init() {
-        super.init(numInputs: 1, attributes: [.isBlockStart], contextOpened: [.switchBlock])
+        super.init(
+            numInputs: 1,
+            numInnerOutputs: 1,
+            attributes: [.isBlockStart],
+            contextOpened: [.switchBlock])
     }
 }
 

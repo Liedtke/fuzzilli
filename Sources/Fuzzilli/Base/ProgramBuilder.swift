@@ -3918,13 +3918,18 @@ public class ProgramBuilder {
         }
     }
 
-    public func buildSwitch(on switchVar: Variable, body: (SwitchBlock) -> Void) {
-        emit(BeginSwitch(), withInputs: [switchVar])
-        body(currentSwitchBlock)
+    public func buildSwitch(on switchVar: Variable, body: (SwitchBlock, Variable) -> Void) {
+        let label = emit(BeginSwitch(), withInputs: [switchVar]).innerOutput
+        body(currentSwitchBlock, label)
         emit(EndSwitch())
     }
 
+    public func buildSwitch(on switchVar: Variable, body: (SwitchBlock) -> Void) {
+        buildSwitch(on: switchVar) { sw, _ in body(sw) }
+    }
+
     public func switchBreak() {
+        // "break lbl;" is also supported for switch blocks, but for that we (re-)use blockBreak().
         emit(SwitchBreak())
     }
 
@@ -4131,7 +4136,7 @@ public class ProgramBuilder {
     }
 
     public func blockBreak(_ label: Variable) {
-        emit(BlockBreak(), withInputs: [label])
+        emit(BlockBreak(), withInputs: [label], types: [.jsBlockLabel])
     }
 
     public func maybeWrapInsideBundleScript(_ body: () -> Void) {

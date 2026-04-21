@@ -1394,6 +1394,7 @@ public struct JSTyper: Analyzer {
             }
             state.endGroupOfConditionallyExecutingBlocks(typeChanges: &typeChanges)
         case .beginSwitch:
+            set(instr.innerOutput, .jsBlockLabel)
             state.startSwitch()
         case .beginSwitchCase:
             state.enterSwitchCase(typeChanges: &typeChanges)

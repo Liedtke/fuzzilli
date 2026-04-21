@@ -271,7 +271,7 @@ public class FuzzILLifter: Lifter {
             w.emit("EndClassSetter")
 
         case .beginClassStaticInitializer:
-            w.emit("BeginClassStaticInitializer -> \(lift(instr.innerOutput))")
+            w.emit("BeginClassStaticInitializer -> \(innerOutput())")
             w.increaseIndentionLevel()
 
         case .endClassStaticInitializer:
@@ -618,7 +618,7 @@ public class FuzzILLifter: Lifter {
             w.emit("EndIf")
 
         case .beginSwitch:
-            w.emit("BeginSwitch \(input(0))")
+            w.emit("BeginSwitch \(input(0)) -> \(innerOutput())")
             w.increaseIndentionLevel()
 
         case .beginSwitchCase:
@@ -818,7 +818,7 @@ public class FuzzILLifter: Lifter {
             w.emit("EndCodeString")
 
         case .beginBlockStatement:
-            w.emit("BeginBlockStatement  -> \(lift(instr.innerOutput))")
+            w.emit("BeginBlockStatement  -> \(innerOutput())")
             w.increaseIndentionLevel()
 
         case .endBlockStatement:

@@ -1285,7 +1285,8 @@ public class JavaScriptLifter: Lifter {
 
             case .beginSwitch:
                 let VALUE = input(0)
-                w.emit("switch (\(VALUE)) {")
+                let prefix = w.labelPrefix(for: instr.innerOutput)
+                w.emit("\(prefix)switch (\(VALUE)) {")
                 w.enterNewBlock()
 
             case .beginSwitchCase:
