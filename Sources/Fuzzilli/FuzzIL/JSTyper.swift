@@ -2164,7 +2164,7 @@ public struct JSTyper: Analyzer {
             }
             set(instr.innerOutputs.last!, .jsLoopLabel)
 
-        case .beginBlockStatement:
+        case .beginBlockStatement, .beginIf, .beginElse:
             set(instr.innerOutput, .jsBlockLabel)
 
         case .beginCatch:

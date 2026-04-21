@@ -605,12 +605,12 @@ public class FuzzILLifter: Lifter {
 
         case .beginIf(let op):
             let mode = op.inverted ? "(inverted) " : ""
-            w.emit("BeginIf \(mode)\(input(0))")
+            w.emit("BeginIf \(mode)\(input(0)) -> \(innerOutput())")
             w.increaseIndentionLevel()
 
         case .beginElse:
             w.decreaseIndentionLevel()
-            w.emit("BeginElse")
+            w.emit("BeginElse -> \(innerOutput())")
             w.increaseIndentionLevel()
 
         case .endIf:

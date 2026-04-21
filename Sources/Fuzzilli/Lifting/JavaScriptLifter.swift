@@ -1250,11 +1250,32 @@ public class JavaScriptLifter: Lifter {
                 if op.inverted {
                     COND = UnaryExpression.new() + "!" + COND
                 }
-                w.emit("if (\(COND)) {")
+
+                let labelIf = instr.innerOutput
+                let labelElse = program.code.blockgroup(startedBy: instr).blockInstructionIndices
+                    .map({ program.code[$0] })
+                    .first(where: { $0.op is BeginElse })?.innerOutput
+
+                let labelIsUsed =
+                    analyzer.numUses(of: labelIf) > 0
+                    || (labelElse != nil && analyzer.numUses(of: labelElse!) > 0)
+                if labelIsUsed {
+                    let label = w.declare(labelIf, as: "L" + String(labelIf.number))
+                    let prefix = "\(label): "
+                    w.emit("\(prefix)if (\(COND)) {")
+                } else {
+                    w.emit("if (\(COND)) {")
+                }
                 w.enterNewBlock()
 
             case .beginElse:
                 w.leaveCurrentBlock()
+                // Rewire the else-label to the if-label such that break statements always reference the if-label.
+                let labelElse = instr.innerOutput
+                if analyzer.numUses(of: labelElse) > 0 {
+                    let labelIf = program.code.findBlockGroupHead(around: instr).innerOutput
+                    w.link(labelElse, to: labelIf)
+                }
                 w.emit("} else {")
                 w.enterNewBlock()
 
@@ -2474,6 +2495,13 @@ public class JavaScriptLifter: Lifter {
             let name = maybeName ?? "v" + String(v.number)
             expressions[v] = Identifier.new(name)
             return name
+        }
+
+        mutating func link(_ v2: Variable, to v1: Variable) {
+            assert(
+                expressions.contains(v1),
+                "Linking v2 to v1 is not possible because v1 is not declared")
+            expressions[v2] = expressions[v1]!
         }
 
         /// Declare all of the given variables. Equivalent to calling declare() for each of them.

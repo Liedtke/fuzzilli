@@ -296,6 +296,134 @@ class LabelTests: XCTestCase {
         XCTAssertEqual(actual, expected)
     }
 
+    func testIfStatementLabel() {
+        let fuzzer = makeMockFuzzer()
+        let b = fuzzer.makeBuilder()
+
+        let cond = b.loadBool(true)
+        b.buildIf(cond) { label in
+            XCTAssertEqual(b.type(of: label), .jsBlockLabel)
+            b.blockBreak(label)
+        }
+
+        let program = b.finalize()
+        let actual = fuzzer.lifter.lift(program)
+        let expected = """
+            L1: if (true) {
+                break L1;
+            }
+
+            """
+        XCTAssertEqual(actual, expected)
+    }
+
+    func testIfElseStatementLabel() {
+        let fuzzer = makeMockFuzzer()
+        let b = fuzzer.makeBuilder()
+
+        let cond = b.loadBool(true)
+        b.buildIfElse(
+            cond,
+            ifBody: { label in
+                XCTAssertEqual(b.type(of: label), .jsBlockLabel)
+                b.blockBreak(label)
+            },
+            elseBody: { label in
+                XCTAssertEqual(b.type(of: label), .jsBlockLabel)
+                b.blockBreak(label)
+            })
+
+        let program = b.finalize()
+
+        let fuzzilLifter = FuzzILLifter()
+        let fuzzil = fuzzilLifter.lift(program)
+        let expectedFuzzil = """
+            v0 <- LoadBoolean 'true'
+            BeginIf v0 -> v1
+                BlockBreak v1
+            BeginElse -> v2
+                BlockBreak v2
+            EndIf
+
+            """
+        XCTAssertEqual(fuzzil, expectedFuzzil)
+
+        let actual = fuzzer.lifter.lift(program)
+        let expected = """
+            L1: if (true) {
+                break L1;
+            } else {
+                break L1;
+            }
+
+            """
+        XCTAssertEqual(actual, expected)
+    }
+
+    func testNestedIfElseStatementLabels() {
+        let fuzzer = makeMockFuzzer()
+        let b = fuzzer.makeBuilder()
+
+        let cond1 = b.loadBool(true)
+        let cond2 = b.loadBool(false)
+        b.buildIfElse(
+            cond1,
+            ifBody: { label1If in
+                b.buildIfElse(
+                    cond2,
+                    ifBody: { label2If in
+                        b.blockBreak(label1If)
+                        b.blockBreak(label2If)
+                    },
+                    elseBody: { label2Else in
+                        b.blockBreak(label1If)
+                        b.blockBreak(label2Else)
+                    })
+            },
+            elseBody: { label1Else in
+                b.blockBreak(label1Else)
+            })
+
+        let program = b.finalize()
+
+        let fuzzilLifter = FuzzILLifter()
+        let fuzzil = fuzzilLifter.lift(program)
+        let expectedFuzzil = """
+            v0 <- LoadBoolean 'true'
+            v1 <- LoadBoolean 'false'
+            BeginIf v0 -> v2
+                BeginIf v1 -> v3
+                    BlockBreak v2
+                    BlockBreak v3
+                BeginElse -> v4
+                    BlockBreak v2
+                    BlockBreak v4
+                EndIf
+            BeginElse -> v5
+                BlockBreak v5
+            EndIf
+
+            """
+        XCTAssertEqual(fuzzil, expectedFuzzil)
+
+        let actual = fuzzer.lifter.lift(program)
+        let expected = """
+            L2: if (true) {
+                L3: if (false) {
+                    break L2;
+                    break L3;
+                } else {
+                    break L2;
+                    break L3;
+                }
+            } else {
+                break L2;
+            }
+
+            """
+        XCTAssertEqual(actual, expected)
+    }
+
     func testLabelVisibilityInFunctions() {
         let fuzzer = makeMockFuzzer()
         let b = fuzzer.makeBuilder()

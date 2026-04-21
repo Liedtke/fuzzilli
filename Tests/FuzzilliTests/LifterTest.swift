@@ -4289,8 +4289,8 @@ class LifterTests: XCTestCase {
 
         let expected = """
             if (true) {
-                const v1 = {};
-                v1.x = () => {
+                const v2 = {};
+                v2.x = () => {
                     const a = 1;
                     return a + a;
                 };

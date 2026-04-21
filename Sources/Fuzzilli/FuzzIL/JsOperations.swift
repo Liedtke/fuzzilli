@@ -2112,7 +2112,9 @@ final class BeginIf: JsOperation {
     init(inverted: Bool) {
         self.inverted = inverted
         super.init(
-            numInputs: 1, attributes: [.isBlockStart, .isMutable, .propagatesSurroundingContext],
+            numInputs: 1,
+            numInnerOutputs: 1,
+            attributes: [.isBlockStart, .isMutable, .propagatesSurroundingContext],
             contextOpened: .javascript)
     }
 }
@@ -2122,6 +2124,7 @@ final class BeginElse: JsOperation {
 
     init() {
         super.init(
+            numInnerOutputs: 1,
             attributes: [.isBlockEnd, .isBlockStart, .propagatesSurroundingContext],
             contextOpened: .javascript)
     }

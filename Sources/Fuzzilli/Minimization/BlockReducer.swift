@@ -269,18 +269,17 @@ struct BlockReducer: Reducer {
             let beginIf = helper.code[ifBlock.head].op as! BeginIf
             let invertedIf = BeginIf(inverted: !beginIf.inverted)
             var replacements = [(Int, Instruction)]()
-            replacements.append(
-                (
-                    ifBlock.head,
-                    Instruction(invertedIf, inouts: helper.code[ifBlock.head].inouts)
-                ))
+            // The new BeginIf will take the original inputs but produces the inner output
+            // of the original BeginElse block, so that users of it are rewired correctly.
+            let inouts = helper.code[ifBlock.head].inputs + helper.code[elseBlock.head].innerOutputs
+            replacements.append((ifBlock.head, Instruction(invertedIf, inouts: inouts)))
             // The rest of the if body is nopped ...
             for instr in helper.code.body(of: ifBlock) {
                 replacements.append((instr.index, helper.nop(for: instr)))
             }
             // ... as well as the BeginElse.
             replacements.append((elseBlock.head, Instruction(Nop())))
-            helper.tryReplacements(replacements)
+            helper.tryReplacements(replacements, renumberVariables: true)
         }
     }
 

@@ -3885,18 +3885,28 @@ public class ProgramBuilder {
         emit(UpdateSuperProperty(propertyName: name, operator: op), withInputs: [value])
     }
 
+    public func buildIf(_ condition: Variable, ifBody: (Variable) -> Void) {
+        let label = emit(BeginIf(inverted: false), withInputs: [condition]).innerOutput
+        ifBody(label)
+        emit(EndIf())
+    }
+
     public func buildIf(_ condition: Variable, ifBody: () -> Void) {
-        emit(BeginIf(inverted: false), withInputs: [condition])
-        ifBody()
+        buildIf(condition) { _ in ifBody() }
+    }
+
+    public func buildIfElse(
+        _ condition: Variable, ifBody: (Variable) -> Void, elseBody: (Variable) -> Void
+    ) {
+        let labelIf = emit(BeginIf(inverted: false), withInputs: [condition]).innerOutput
+        ifBody(labelIf)
+        let labelElse = emit(BeginElse()).innerOutput
+        elseBody(labelElse)
         emit(EndIf())
     }
 
     public func buildIfElse(_ condition: Variable, ifBody: () -> Void, elseBody: () -> Void) {
-        emit(BeginIf(inverted: false), withInputs: [condition])
-        ifBody()
-        emit(BeginElse())
-        elseBody()
-        emit(EndIf())
+        buildIfElse(condition, ifBody: { _ in ifBody() }, elseBody: { _ in elseBody() })
     }
 
     public class SwitchBlock {
