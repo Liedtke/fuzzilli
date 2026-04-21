@@ -724,7 +724,7 @@ public class FuzzILLifter: Lifter {
             }
             w.increaseIndentionLevel()
 
-        case .beginForLoopBody(let op):
+        case .beginForLoopBody(_):
             w.decreaseIndentionLevel()
             let loopVariablesAndLabel = instr.innerOutputs.map(lift).joined(separator: ", ")
             w.emit("BeginForLoopBody -> \(loopVariablesAndLabel)")

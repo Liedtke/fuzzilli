@@ -1104,6 +1104,8 @@ public func v8ProcessArgs(randomize: Bool, forSandbox: Bool) -> [String] {
         if probability(0.3) && !forSandbox {
             args.append("--wasm-assert-types")
         }
+    } else if probability(0.2) {
+        args.append("--wasm-sync-tier-up")
     }
 
     // This greatly helps the fuzzer to decide inlining wasm functions into each other when
@@ -1117,6 +1119,18 @@ public func v8ProcessArgs(randomize: Bool, forSandbox: Bool) -> [String] {
     // Force compiled Wasm wrappers.
     if probability(0.3) {
         args.append("--no-wasm-generic-wrapper")
+    }
+
+    if probability(0.2) {
+        args.append("--no-wasm-async-compilation")
+    }
+
+    if probability(0.2) {
+        args.append("--no-wasm-native-module-cache")
+    }
+
+    if probability(0.2) {
+        args.append("--wasm-caching-threshold=\(Int.random(in: 1...1000))")
     }
 
     //
@@ -1380,6 +1394,8 @@ public func v8ProcessArgs(randomize: Bool, forSandbox: Bool) -> [String] {
         chooseBooleanFlag("wasm-bulkmem-inlining")
         chooseBooleanFlag("wasm-lazy-compilation")
         chooseBooleanFlag("wasm-lazy-validation")
+        chooseBooleanFlag("asm-wasm-lazy-compilation")
+        chooseBooleanFlag("validate-asm")
     }
 
     return args
