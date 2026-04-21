@@ -90,6 +90,10 @@ public class ProgramBuilder {
     private var hiddenVariables = VariableSet()
     private var numberOfHiddenVariables = 0
 
+    /// Variables that have been hidden because of the current context (e.g. labels when entering a function).
+    /// This stack matches the `scopes` stack: each entry contains the variables that were hidden when that scope was opened.
+    private var hiddenVariablesInScope = Stack<[Variable]>([[]])
+
     /// Type inference for JavaScript variables.
     private var jsTyper: JSTyper
 
@@ -217,6 +221,7 @@ public class ProgramBuilder {
         variablesInScope.removeAll()
         hiddenVariables.removeAll()
         numberOfHiddenVariables = 0
+        hiddenVariablesInScope = Stack([[]])
         contextAnalyzer = ContextAnalyzer(isBundle: isBundle)
         jsTyper.reset()
         activeObjectLiterals.removeAll()
@@ -6088,6 +6093,9 @@ public class ProgramBuilder {
                 unhide(v)
             }
             variablesInScope.removeLast(current.count)
+
+            // Unhide variables that were hidden when this scope was opened.
+            _ = hiddenVariablesInScope.pop().map(unhide)
         }
 
         scopes.top.append(contentsOf: instr.outputs)
@@ -6096,6 +6104,24 @@ public class ProgramBuilder {
         // Scope management (2). Happens here since e.g. function definitions create a variable in the outer scope.
         if instr.isBlockStart {
             scopes.push([])
+
+            // Labels must not be referenced from within subroutines, class definitions, etc.
+            let hidingContexts: Context = [
+                .subroutine, .classDefinition, .objectLiteral, .wasm, .wasmFunction,
+            ]
+
+            if !instr.op.contextOpened.intersection(hidingContexts).isEmpty {
+                let labelType = ILType.jsLoopLabel | .jsBlockLabel
+
+                let newlyHiddenVariables = visibleVariables.filter { v in
+                    type(of: v).Is(labelType) && !hiddenVariables.contains(v)
+                }
+                _ = newlyHiddenVariables.map(hide)
+                hiddenVariablesInScope.push(newlyHiddenVariables)
+
+            } else {
+                hiddenVariablesInScope.push([Variable]())
+            }
         }
 
         scopes.top.append(contentsOf: instr.innerOutputs)

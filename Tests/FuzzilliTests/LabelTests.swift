@@ -295,4 +295,83 @@ class LabelTests: XCTestCase {
             """
         XCTAssertEqual(actual, expected)
     }
+
+    func testLabelVisibilityInFunctions() {
+        let fuzzer = makeMockFuzzer()
+        let b = fuzzer.makeBuilder()
+
+        b.buildWhileLoop({ b.loadBool(true) }) { label in
+            XCTAssertEqual(b.type(of: label), .jsLoopLabel)
+
+            // The label should NOT be visible here if we are inside a function
+            b.buildPlainFunction(with: .parameters(n: 0)) { args in
+                let visibleLabels = b.visibleVariables.filter {
+                    b.type(of: $0).Is(.jsLoopLabel | .jsBlockLabel)
+                }
+                XCTAssertTrue(visibleLabels.isEmpty)
+            }
+
+            // But it should be visible again here
+            let visibleLabels = b.visibleVariables.filter {
+                b.type(of: $0).Is(.jsLoopLabel | .jsBlockLabel)
+            }
+            XCTAssertTrue(visibleLabels.contains(label))
+        }
+    }
+
+    func testLabelVisibilityInClasses() {
+        let fuzzer = makeMockFuzzer()
+        let b = fuzzer.makeBuilder()
+
+        b.buildWhileLoop({ b.loadBool(true) }) { label in
+            XCTAssertEqual(b.type(of: label), .jsLoopLabel)
+
+            // The label should NOT be visible here if we are inside a class definition
+            b.buildClassDefinition { cls in
+                let visibleLabels = b.visibleVariables.filter {
+                    b.type(of: $0).Is(.jsLoopLabel | .jsBlockLabel)
+                }
+                XCTAssertTrue(visibleLabels.isEmpty)
+            }
+
+            // But it should be visible again here
+            let visibleLabels = b.visibleVariables.filter {
+                b.type(of: $0).Is(.jsLoopLabel | .jsBlockLabel)
+            }
+            XCTAssertTrue(visibleLabels.contains(label))
+        }
+    }
+
+    func testLabelVisibilityInObjectLiterals() {
+        let fuzzer = makeMockFuzzer()
+        let b = fuzzer.makeBuilder()
+
+        b.buildWhileLoop({ b.loadBool(true) }) { label in
+            // Labels should NOT be visible inside an object literal
+            b.buildObjectLiteral { obj in
+                let visibleLabels = b.visibleVariables.filter {
+                    b.type(of: $0).Is(.jsLoopLabel | .jsBlockLabel)
+                }
+                XCTAssertTrue(visibleLabels.isEmpty)
+            }
+        }
+    }
+
+    func testLabelVisibilityAcrossSwitches() {
+        let fuzzer = makeMockFuzzer()
+        let b = fuzzer.makeBuilder()
+
+        b.buildWhileLoop({ b.loadBool(true) }) { label in
+            // Labels SHOULD be visible inside a switch
+            let cond = b.loadInt(42)
+            b.buildSwitch(on: cond) { sw in
+                sw.addDefaultCase {
+                    let visibleLabels = b.visibleVariables.filter {
+                        b.type(of: $0).Is(.jsLoopLabel | .jsBlockLabel)
+                    }
+                    XCTAssertTrue(visibleLabels.contains(label))
+                }
+            }
+        }
+    }
 }
