@@ -41,6 +41,9 @@ public class JavaScriptCompiler {
     /// Contains the mapping from JavaScript variables to FuzzIL variables in every active scope.
     private var scopes = Stack<[String: Variable]>()
 
+    /// Contains the mapping from JavaScript labels to FuzzIL variables in every active scope.
+    private var labelsStack = Stack<(String?, Variable?)>()
+
     /// The next free FuzzIL variable.
     private var nextVariable = 0
 
@@ -309,9 +312,17 @@ public class JavaScriptCompiler {
         }
     }
 
-    private func compileStatement(_ node: StatementNode) throws {
+    private func compileStatement(_ node: StatementNode, pendingLabel: String? = nil) throws {
         guard let stmt = node.statement else {
             throw CompilerError.invalidASTError("missing concrete statement in statement node")
+        }
+
+        if pendingLabel != nil {
+            // TODO(bettscheider): Also check for .whileLoop etc. once this is implemented.
+            guard case .blockStatement = stmt else {
+                throw CompilerError.unsupportedFeatureError(
+                    "Labels are only supported on block statements for now")
+            }
         }
 
         switch stmt {
@@ -320,8 +331,10 @@ public class JavaScriptCompiler {
             break
 
         case .blockStatement(let blockStatement):
-            emit(BeginBlockStatement())
-            try enterNewScope {
+            let instr = emit(BeginBlockStatement())
+            try enterNewScope(
+                labelToRegister: pendingLabel, labelVariable: instr.innerOutput
+            ) {
                 for statement in blockStatement.body {
                     try compileStatement(statement)
                 }
@@ -571,15 +584,24 @@ public class JavaScriptCompiler {
 
             emit(EndForOfLoop())
 
-        case .breakStatement:
-            // If we're in both .loop and .switch context, then the loop must be the most recent context
-            // (switch blocks don't propagate an outer .loop context) so we just need to check for .loop here
-            if contextAnalyzer.context.contains(.loop) {
-                emit(LoopBreak())
-            } else if contextAnalyzer.context.contains(.switchCase) {
-                emit(SwitchBreak())
+        case .breakStatement(let breakStatement):
+            if !breakStatement.label.isEmpty {
+                guard let labelVar = lookupLabel(breakStatement.label) else {
+                    throw CompilerError.invalidNodeError("unknown label: \(breakStatement.label)")
+                }
+
+                emit(BlockBreak(), withInputs: [labelVar])
             } else {
-                throw CompilerError.invalidNodeError("break statement outside of loop or switch")
+                // If we're in both .loop and .switch context, then the loop must be the most recent context
+                // (switch blocks don't propagate an outer .loop context) so we just need to check for .loop here
+                if contextAnalyzer.context.contains(.loop) {
+                    emit(LoopBreak())
+                } else if contextAnalyzer.context.contains(.switchCase) {
+                    emit(SwitchBreak())
+                } else {
+                    throw CompilerError.invalidNodeError(
+                        "break statement outside of loop or switch")
+                }
             }
 
         case .continueStatement:
@@ -653,6 +675,9 @@ public class JavaScriptCompiler {
                 emit(EndSwitchCase(fallsThrough: true))
             }
             emit(EndSwitch())
+
+        case .labeledStatement(let labeledStatement):
+            try compileStatement(labeledStatement.body, pendingLabel: labeledStatement.label)
         }
     }
 
@@ -1477,10 +1502,18 @@ public class JavaScriptCompiler {
         return code.append(instr)
     }
 
-    private func enterNewScope(_ block: () throws -> Void) rethrows {
+    private func enterNewScope(
+        labelToRegister: String? = nil, labelVariable: Variable? = nil, _ block: () throws -> Void
+    ) rethrows {
         scopes.push([:])
+        labelsStack.push((labelToRegister, labelVariable))
         try block()
+        labelsStack.pop()
         scopes.pop()
+    }
+
+    private func lookupLabel(_ name: String) -> Variable? {
+        labelsStack.elementsStartingAtTop().first { $0.0 == name }?.1
     }
 
     private func map(_ identifier: String, to v: Variable) {
@@ -1565,6 +1598,7 @@ public class JavaScriptCompiler {
         // TODO(marja): Make JavaScriptCompiler understand bundles.
         code = Code(isBundle: false)
         scopes.removeAll()
+        labelsStack.removeAll()
         nextVariable = 0
     }
 }

@@ -359,10 +359,20 @@ function parse(script, proto) {
                 return makeStatement('ForOfLoop', forOfLoop);
             }
             case 'BreakStatement': {
-              return makeStatement('BreakStatement', {});
+              let breakStmt = {};
+              if (node.label !== null) {
+                  breakStmt.label = node.label.name;
+              }
+              return makeStatement('BreakStatement', breakStmt);
             }
             case 'ContinueStatement': {
               return makeStatement('ContinueStatement', {});
+            }
+            case 'LabeledStatement': {
+                let labeledStmt = {};
+                labeledStmt.label = node.label.name;
+                labeledStmt.body = visitStatement(node.body);
+                return makeStatement('LabeledStatement', labeledStmt);
             }
             case 'TryStatement': {
                 assert(node.block.type === 'BlockStatement', "Expected block statement as body of a try block");
@@ -409,7 +419,7 @@ function parse(script, proto) {
                 return switchCase;
             }
             default: {
-                throw "Unhandled node type " + node.type;
+                throw "Unhandled node type " + node.type
             }
         }
     }

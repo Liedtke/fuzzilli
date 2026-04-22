@@ -208,9 +208,16 @@ message ForOfLoop {
 }
 
 message BreakStatement {
+    // The label is optional
+    string label = 1;
 }
 
 message ContinueStatement {
+}
+
+message LabeledStatement {
+    string label = 1;
+    Statement body = 2;
 }
 
 message CatchClause {
@@ -273,6 +280,7 @@ message Statement {
         WithStatement withStatement = 19;
         SwitchStatement switchStatement = 20;
         DisposableVariableDeclaration disposableVariableDeclaration = 21;
+        LabeledStatement labeledStatement = 22;
     }
 }
 
