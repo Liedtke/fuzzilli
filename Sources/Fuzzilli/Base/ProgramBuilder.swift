@@ -778,13 +778,10 @@ public class ProgramBuilder {
 
         // We only need to check against all base types from TypeSystem.swift, this works because we use .MayBe
         // TODO: Not sure how we should handle merge types, e.g. .string + .object(...).
-        let typeGenerators: [(ILType, () -> Variable)] = [
-            (
-                .integer,
-                { type.isEnumeration ? self.loadEnum(type) : self.loadInt(self.randomInt()) }
-            ),
-            (
-                .string,
+        let typeGenerators: [ILType: () -> Variable] = [
+            .integer:
+                { type.isEnumeration ? self.loadEnum(type) : self.loadInt(self.randomInt()) },
+            .string:
                 {
                     if type.isEnumeration {
                         return self.loadEnum(type)
@@ -796,31 +793,25 @@ public class ProgramBuilder {
                         return self.loadString(customStringGen(), customName: typeName)
                     }
                     return self.loadString(self.randomString())
-                }
-            ),
-            (.boolean, { return self.loadBool(probability(0.5)) }),
-            (.bigint, { return self.loadBigInt(self.randomInt()) }),
-            (.float, { return self.loadFloat(self.randomFloat()) }),
-            (
-                .regexp,
+                },
+            .boolean: { return self.loadBool(probability(0.5)) },
+            .bigint: { return self.loadBigInt(self.randomInt()) },
+            .float: { return self.loadFloat(self.randomFloat()) },
+            .regexp:
                 {
                     let (pattern, flags) = self.randomRegExpPatternAndFlags()
                     return self.loadRegExp(pattern, flags)
-                }
-            ),
-            (.iterable, { return self.createArray(with: [self.randomJsVariable()]) }),
-            (
-                .function(),
+                },
+            .iterable: { return self.createArray(with: [self.randomJsVariable()]) },
+            .function():
                 {
                     // TODO: We could technically generate a full function here but then we would enter the full code generation logic which could do anything.
                     // Because we want to avoid this, we will just pick anything that can be a function.
                     //
                     // Note that builtin constructors are handled above in the maybeGenerateConstructorAsPath call.
                     return self.randomVariable(forUseAs: .function())
-                }
-            ),
-            (
-                .unboundFunction(),
+                },
+            .unboundFunction():
                 {
                     // TODO: We have the same issue as above for functions.
                     // First try to find an existing unbound function. if not present, try to find any
@@ -828,20 +819,16 @@ public class ProgramBuilder {
                     // information about the receiver type (which for many functions doesn't matter).
                     return self.randomVariable(ofType: .unboundFunction())
                         ?? self.randomVariable(forUseAs: .function())
-                }
-            ),
-            (.undefined, { return self.loadUndefined() }),
-            (
-                .constructor(),
+                },
+            .undefined: { return self.loadUndefined() },
+            .constructor():
                 {
                     // TODO: We have the same issue as above for functions.
                     //
                     // Note that builtin constructors are handled above in the maybeGenerateConstructorAsPath call.
                     return self.randomVariable(forUseAs: .constructor())
-                }
-            ),
-            (
-                .wasmTypeDef(),
+                },
+            .wasmTypeDef():
                 {
                     // Call into the WasmTypeGroup generator (or other that provide a .wasmTypeDef)
                     let generators = self.fuzzer.codeGenerators.filter { gen in
@@ -851,10 +838,8 @@ public class ProgramBuilder {
                     }
                     let _ = self.complete(generator: generators.randomElement(), withBudget: 5)
                     return self.randomVariable(ofType: .wasmTypeDef())!
-                }
-            ),
-            (
-                .object(),
+                },
+            .object():
                 {
                     func useMethodToProduce(_ method: (group: String, method: String)) -> Variable {
                         let group = self.fuzzer.environment.type(ofGroup: method.group)
@@ -968,16 +953,18 @@ public class ProgramBuilder {
                     // 2. an object without a group, but it has some required fields.
                     // In either case, we try to construct such an object.
                     return self.createObjectWithProperties(type)
-                }
-            ),
+                },
         ]
 
         // Make sure that we walk over these tests and their generators randomly.
         // The requested type could be a Union of other types and as such we want to randomly generate one of them,
         // therefore we also use the MayBe test below. However, if we need an object, then we have to produce an
         // object.
+        if type.Is(.object()) {
+            return typeGenerators[.object()]!()
+        }
         for (t, generate) in typeGenerators.shuffled() {
-            if type.Is(t) || (!type.Is(.object()) && type.MayBe(t)) {
+            if type.MayBe(t) {
                 let variable = generate()
                 return variable
             }
