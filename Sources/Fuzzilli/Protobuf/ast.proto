@@ -213,6 +213,8 @@ message BreakStatement {
 }
 
 message ContinueStatement {
+    // The label is optional
+    string label = 1;
 }
 
 message LabeledStatement {
