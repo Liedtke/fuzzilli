@@ -132,6 +132,6 @@ extension Context: CustomStringConvertible {
         if self.contains(.wasmTypeGroup) {
             strings.append(".wasmTypeGroup")
         }
-        return strings.joined(separator: " | ")
+        return strings.count > 0 ? strings.joined(separator: " | ") : ".empty"
     }
 }
