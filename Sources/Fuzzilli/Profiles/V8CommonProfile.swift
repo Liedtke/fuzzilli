@@ -1133,6 +1133,18 @@ public func v8ProcessArgs(randomize: Bool, forSandbox: Bool) -> [String] {
         args.append("--wasm-caching-threshold=\(Int.random(in: 1...1000))")
     }
 
+    // Disabling batching allows the fuzzer to reach higher JIT tiers faster; sometimes test the
+    // production configuration too.
+    if probability(0.8) {
+        args.append("--no-baseline-batch-compilation")
+    }
+
+    // Disabling lazy feedback allocation allows the fuzzer to reach higher JIT tiers faster;
+    // sometimes test with the production configuration too.
+    if probability(0.8) {
+        args.append("--no-lazy-feedback-allocation")
+    }
+
     //
     // Future features that should sometimes be enabled.
     //
@@ -1265,6 +1277,13 @@ public func v8ProcessArgs(randomize: Bool, forSandbox: Bool) -> [String] {
         }
         if probability(0.2) {
             args.append("--turboshaft-verify-load-store-taggedness")
+        }
+        // This stressing is only reasonable for non-sandbox fuzzing, since it might trigger benign
+        // CHECKs that could mask actual sandbox violations. The stressing also happens to break
+        // some reproducers because of slightly changing memory layouts, hence this "medium"
+        // probability.
+        if probability(0.5) {
+            args.append("--stress-lazy-source-positions")
         }
     }
 
