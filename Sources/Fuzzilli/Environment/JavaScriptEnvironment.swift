@@ -1130,6 +1130,15 @@ public struct ObjectGroup {
         properties: [String: ILType], overloads: [String: [Signature]], parent: String? = nil
     ) {
         self.name = name
+        if name.hasPrefix("_fuzz_") {
+            let isRegistered = ILType.dynamicObjectGroupPrefixes.contains(where: {
+                name.hasPrefix($0)
+            })
+            assert(
+                isRegistered,
+                "Dynamic object group prefix for '\(name)' is not registered in ILType.dynamicObjectGroupPrefixes. This will break groupsMatchByPrefix!"
+            )
+        }
         self.properties = properties
         self.methods = overloads
         self.parent = parent

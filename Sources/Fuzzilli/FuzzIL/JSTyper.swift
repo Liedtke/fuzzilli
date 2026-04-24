@@ -44,7 +44,7 @@ public struct JSTyper: Analyzer {
     // Tracks the active function definitions and contains the instruction that started the function.
     private var activeFunctionDefinitions = Stack<Instruction>()
 
-    /// This tracks program local object groups of various types (WasmModules, JS Classes and Object literals).
+    /// This tracks program local object groups (WasmModules, JS Classes and Object literals).
     private var dynamicObjectGroupManager = ObjectGroupManager()
 
     public class ObjectGroupManager {
@@ -82,15 +82,6 @@ public struct JSTyper: Analyzer {
         }
 
         var seenWasmVars = SeenWasmVariables()
-
-        /// These are the different types of program local object groups this typer can track.
-        /// TODO(cffsmith): We could also track WasmGlobals here.
-        public enum ObjectGroupType: CaseIterable {
-            case wasmModule
-            case wasmExports
-            case objectLiteral
-            case jsClass
-        }
 
         public var top: ObjectGroup {
             return activeObjectGroups.top
@@ -137,8 +128,8 @@ public struct JSTyper: Analyzer {
             }
         }
 
-        /// Finalizes the most recently opened ObjectGroup of this type.
-        private func finalize(type: ObjectGroupType) -> ILType {
+        /// Finalizes the most recently opened ObjectGroup.
+        public func finalize() -> ILType {
             let group = activeObjectGroups.pop()
             // Make sure that we don't already have such a named group in our finalizedObjectGroups
             assert(!finalizedObjectGroups.contains(where: { group.name == $0.name }))
@@ -148,7 +139,7 @@ public struct JSTyper: Analyzer {
         }
 
         public func finalizeClass() -> (ILType, ClassDefinition) {
-            let instanceType = finalize(type: .jsClass)
+            let instanceType = finalize()
             let classDefinition = activeClasses.pop()
             // This is the ObjectGroup tracking the constructor.
             let group = classDefinition.objectGroup
@@ -158,20 +149,16 @@ public struct JSTyper: Analyzer {
             return (instanceType, classDefinition)
         }
 
-        public func finalizeObjectLiteral() -> ILType {
-            finalize(type: .objectLiteral)
-        }
-
         public func finalizeWasmModule() -> ILType {
             // Get the instance type of the exports
-            let exportsInstanceType = finalize(type: .wasmExports)
+            let exportsInstanceType = finalize()
 
             addProperty(propertyName: "exports")
             updatePropertyType(propertyName: "exports", type: exportsInstanceType)
 
             // Clear the seenWasmVariables
             seenWasmVars = SeenWasmVariables()
-            return finalize(type: .wasmModule)
+            return finalize()
         }
 
         public func createNewWasmModule() {
@@ -315,12 +302,12 @@ public struct JSTyper: Analyzer {
                 if instr.op.requiredContext.inWasm {
                     let methodName = "w\(seenWasmVars.functionDefines.count)"
                     seenWasmVars.functionDefines.append(variable)
-                    addMethod(methodName: methodName, of: .wasmExports)
+                    addMethod(methodName: methodName)
                     updateMethodSignature(methodName: methodName, signature: signature)
                 } else {
                     let methodName = "iw\(seenWasmVars.functionImports.count)"
                     seenWasmVars.functionImports.append((variable, signature))
-                    addMethod(methodName: methodName, of: .wasmExports)
+                    addMethod(methodName: methodName)
                     updateMethodSignature(methodName: methodName, signature: signature)
                 }
             }
@@ -399,7 +386,7 @@ public struct JSTyper: Analyzer {
             }
         }
 
-        public func addMethod(methodName: String, of groupType: ObjectGroupType) {
+        public func addMethod(methodName: String) {
             let topGroup = activeObjectGroups.top
             let newType =
                 ILType.object(ofGroup: topGroup.name, withMethods: [methodName])
@@ -1765,7 +1752,7 @@ public struct JSTyper: Analyzer {
             processParameterDeclarations(
                 instr.innerOutputs(1...),
                 parameters: inferSubroutineParameterList(of: op, at: instr.index))
-            dynamicObjectGroupManager.addMethod(methodName: op.methodName, of: .objectLiteral)
+            dynamicObjectGroupManager.addMethod(methodName: op.methodName)
 
         case .beginObjectLiteralComputedMethod(let op):
             // The first inner output is the explicit |this| parameter for the constructor
@@ -1801,7 +1788,7 @@ public struct JSTyper: Analyzer {
                 parameters: inferSubroutineParameterList(of: op, at: instr.index))
 
         case .endObjectLiteral:
-            let instanceType = dynamicObjectGroupManager.finalizeObjectLiteral()
+            let instanceType = dynamicObjectGroupManager.finalize()
             set(instr.output, instanceType)
 
         case .beginClassConstructor(let op):
@@ -1840,7 +1827,7 @@ public struct JSTyper: Analyzer {
                 dynamicObjectGroupManager.addClassStaticMethod(methodName: op.methodName)
             } else {
                 set(instr.innerOutput(0), dynamicObjectGroupManager.top.instanceType)
-                dynamicObjectGroupManager.addMethod(methodName: op.methodName, of: .jsClass)
+                dynamicObjectGroupManager.addMethod(methodName: op.methodName)
             }
             processParameterDeclarations(
                 instr.innerOutputs(1...),

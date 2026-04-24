@@ -103,6 +103,10 @@
 // See also Tests/FuzzilliTests/TypeSystemTest.swift for examples of the various properties and features of this type system.
 //
 public struct ILType: Hashable {
+    public static let dynamicObjectGroupPrefixes = [
+        "_fuzz_Object", "_fuzz_WasmModule", "_fuzz_WasmExports", "_fuzz_Class",
+        "_fuzz_Constructor",
+    ]
 
     //
     // Types and type constructors
@@ -557,16 +561,12 @@ public struct ILType: Hashable {
         // If you add a new custom object group, please check the logic below.
         // Make sure that the groups themselves are not prefixes.
         assert(
-            JSTyper.ObjectGroupManager.ObjectGroupType.allCases == [
-                .wasmModule, .wasmExports, .objectLiteral, .jsClass,
+            ILType.dynamicObjectGroupPrefixes == [
+                "_fuzz_Object", "_fuzz_WasmModule", "_fuzz_WasmExports", "_fuzz_Class",
+                "_fuzz_Constructor",
             ])
 
-        let objectGroupTypes = [
-            "_fuzz_Object", "_fuzz_WasmModule", "_fuzz_WasmExports", "_fuzz_Class",
-            "_fuzz_Constructor",
-        ]
-
-        for groupType in objectGroupTypes {
+        for groupType in ILType.dynamicObjectGroupPrefixes {
             if rhs.hasPrefix(groupType) && lhs.hasPrefix(groupType) {
                 // Check that they differ only in a number at the end.
                 assert(
