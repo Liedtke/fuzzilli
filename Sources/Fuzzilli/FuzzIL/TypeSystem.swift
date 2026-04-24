@@ -134,7 +134,16 @@ public struct ILType: Hashable {
     public static let regexp = ILType(definiteType: .regexp)
 
     /// A type that can be iterated over, such as an array or a generator.
-    public static let iterable = ILType(definiteType: .iterable)
+    public static func iterable(ofElementType: ILType? = nil) -> ILType {
+        guard let elementType = ofElementType else {
+            return ILType(definiteType: .iterable)
+        }
+
+        let ext = TypeExtension(
+            group: nil, properties: Set(), methods: Set(), signature: nil, wasmExt: nil,
+            isEnumeration: false, iterableElementType: elementType)
+        return ILType(definiteType: .iterable, ext: ext)
+    }
 
     /// The type that subsumes all others (in js).
     public static let jsAnything = ILType(definiteType: .nothing, possibleType: .jsAnything)
@@ -544,6 +553,14 @@ public struct ILType: Hashable {
             return false
         }
 
+        guard
+            iterableElementType == nil
+                || (other.iterableElementType != nil
+                    && iterableElementType!.subsumes(other.iterableElementType!))
+        else {
+            return false
+        }
+
         return true
     }
 
@@ -622,6 +639,10 @@ public struct ILType: Hashable {
 
     public var group: String? {
         return ext?.group
+    }
+
+    public var iterableElementType: ILType? {
+        return ext?.iterableElementType
     }
 
     public var hasWasmTypeInfo: Bool {
@@ -842,12 +863,17 @@ public struct ILType: Hashable {
         }
         let isEnumeration = self.isEnumeration && other.isEnumeration && group != nil
 
+        // The resulting iterable is parameterized by either iterable's type
+        let iterableElementType =
+            other.iterableElementType != nil
+            ? self.iterableElementType?.union(with: other.iterableElementType!) : nil
+
         return ILType(
             definiteType: definiteType, possibleType: possibleType,
             ext: TypeExtension(
                 group: group, properties: commonProperties, methods: commonMethods,
                 signature: signature, wasmExt: wasmExt, receiver: receiver,
-                isEnumeration: isEnumeration))
+                isEnumeration: isEnumeration, iterableElementType: iterableElementType))
     }
 
     public static func | (lhs: ILType, rhs: ILType) -> ILType {
@@ -949,11 +975,20 @@ public struct ILType: Hashable {
 
         let isEnumeration = self.isEnumeration || other.isEnumeration
 
+        // The resulting iterable parameterized by elements that are both T1's and T2's iterableElementType
+        let iterableElementType: ILType?
+        if let s = self.iterableElementType, let o = other.iterableElementType {
+            iterableElementType = s.intersection(with: o)
+        } else {
+            iterableElementType = self.iterableElementType ?? other.iterableElementType
+        }
+
         return ILType(
             definiteType: definiteType, possibleType: possibleType,
             ext: TypeExtension(
                 group: group, properties: properties, methods: methods, signature: signature,
-                wasmExt: wasmExt, receiver: receiver, isEnumeration: isEnumeration))
+                wasmExt: wasmExt, receiver: receiver, isEnumeration: isEnumeration,
+                iterableElementType: iterableElementType))
     }
 
     public static func & (lhs: ILType, rhs: ILType) -> ILType {
@@ -1001,6 +1036,14 @@ public struct ILType: Hashable {
             return false
         }
 
+        // Merging iterables with different element types is not allowed.
+        guard
+            self.iterableElementType == nil || other.iterableElementType == nil
+                || self.iterableElementType == other.iterableElementType
+        else {
+            return false
+        }
+
         return true
     }
 
@@ -1028,11 +1071,14 @@ public struct ILType: Hashable {
 
         let isEnumeration = self.isEnumeration || other.isEnumeration
 
+        let iterableElementType = self.iterableElementType ?? other.iterableElementType
+
         // We just take the self.wasmExt as they have to be the same, see `canMerge`.
         let ext = TypeExtension(
             group: group, properties: self.properties.union(other.properties),
             methods: self.methods.union(other.methods), signature: signature, wasmExt: wasmExt,
-            receiver: receiver, isEnumeration: isEnumeration)
+            receiver: receiver, isEnumeration: isEnumeration,
+            iterableElementType: iterableElementType)
         return ILType(definiteType: definiteType, possibleType: possibleType, ext: ext)
     }
 
@@ -1204,6 +1250,9 @@ extension ILType: CustomStringConvertible {
         case .boolean:
             return ".boolean"
         case .iterable:
+            if let elementType = self.iterableElementType {
+                return ".iterable<\(elementType.format(abbreviate: abbreviate))>"
+            }
             return ".iterable"
         case .object:
             var params: [String] = []
@@ -1419,12 +1468,18 @@ class TypeExtension: Hashable {
     // Used to indentify whether a type is an enumeration
     let isEnumeration: Bool
 
+    // Used to indentify the type of elements held by an iterable
+    // Note: this is an assumption at generation time, and the array's contents may be mutated arbitrarily
+    let iterableElementType: ILType?
+
     init?(
         group: String? = nil, properties: Set<String>, methods: Set<String>, signature: Signature?,
-        wasmExt: WasmTypeExtension? = nil, receiver: ILType? = nil, isEnumeration: Bool = false
+        wasmExt: WasmTypeExtension? = nil, receiver: ILType? = nil, isEnumeration: Bool = false,
+        iterableElementType: ILType? = nil
     ) {
         if group == nil && properties.isEmpty && methods.isEmpty && signature == nil
-            && wasmExt == nil && receiver == nil
+            && wasmExt == nil && receiver == nil && isEnumeration == false
+            && iterableElementType == nil
         {
             return nil
         }
@@ -1436,6 +1491,7 @@ class TypeExtension: Hashable {
         self.wasmExt = wasmExt
         self.receiver = receiver
         self.isEnumeration = isEnumeration
+        self.iterableElementType = iterableElementType
     }
 
     static func == (lhs: TypeExtension, rhs: TypeExtension) -> Bool {
@@ -1446,6 +1502,7 @@ class TypeExtension: Hashable {
             && lhs.wasmExt == rhs.wasmExt
             && lhs.receiver == rhs.receiver
             && lhs.isEnumeration == rhs.isEnumeration
+            && lhs.iterableElementType == rhs.iterableElementType
     }
 
     public func hash(into hasher: inout Hasher) {
@@ -1456,6 +1513,7 @@ class TypeExtension: Hashable {
         hasher.combine(wasmExt)
         hasher.combine(receiver)
         hasher.combine(isEnumeration)
+        hasher.combine(iterableElementType)
     }
 }
 
@@ -2035,7 +2093,7 @@ public enum Parameter: Hashable {
     public static let string = Parameter.plain(.string)
     public static let boolean = Parameter.plain(.boolean)
     public static let regexp = Parameter.plain(.regexp)
-    public static let iterable = Parameter.plain(.iterable)
+    public static let iterable = Parameter.plain(.iterable())
     public static let jsAnything = Parameter.plain(.jsAnything)
     public static let number = Parameter.plain(.number)
     public static let primitive = Parameter.plain(.primitive)

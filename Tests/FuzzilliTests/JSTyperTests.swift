@@ -302,7 +302,7 @@ class JSTyperTests: XCTestCase {
             }
         }
 
-        XCTAssertEqual(b.type(of: v), .primitive | .object() | .iterable)
+        XCTAssertEqual(b.type(of: v), .primitive | .object() | .iterable())
         XCTAssertEqual(b.type(of: s), .jsString | .float)
         XCTAssertEqual(b.type(of: f), .boolean)  // A static initializer block runs unconditionally
     }
@@ -707,7 +707,7 @@ class JSTyperTests: XCTestCase {
                 b.reassign(variable: v, value: floatVar)
             })
 
-        XCTAssertEqual(b.type(of: v), .string | .float | .object() | .iterable)
+        XCTAssertEqual(b.type(of: v), .string | .float | .object() | .iterable())
         XCTAssertEqual(
             b.type(of: obj), .object(ofGroup: "_fuzz_Object0", withProperties: ["foo", "bar"]))
 

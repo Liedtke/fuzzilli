@@ -1461,7 +1461,7 @@ public let CodeGenerators: [CodeGenerator] = [
 
         // Pick some random inputs to spread.
         let spreads = initialValues.map({ el in
-            probability(0.75) && b.type(of: el).Is(.iterable)
+            probability(0.75) && b.type(of: el).Is(.iterable())
         })
 
         b.createArray(with: initialValues, spreading: spreads)
@@ -2040,7 +2040,7 @@ public let CodeGenerators: [CodeGenerator] = [
         if probability(0.8) {
             // Use Array as the top level iterable
             let iterables = (0..<topLevelIterableSize).map { _ in
-                b.randomVariable(ofType: .iterable) ?? val
+                b.randomVariable(ofType: .iterable()) ?? val
             }
             iterable = b.createArray(with: iterables)
         } else {
@@ -2104,7 +2104,7 @@ public let CodeGenerators: [CodeGenerator] = [
         // Spreading requires the spread values to be iterable, otherwise an exception will be raised.
         var needGuard = false
         for (arg, spread) in zip(arguments, spreads) where spread == true {
-            needGuard = needGuard || b.type(of: arg).MayNotBe(.iterable)
+            needGuard = needGuard || b.type(of: arg).MayNotBe(.iterable())
         }
         b.callMethod(
             methodName, on: obj, withArgs: arguments, spreading: spreads,
@@ -2138,7 +2138,7 @@ public let CodeGenerators: [CodeGenerator] = [
         // Spreading requires the spread values to be iterable, otherwise an exception will be raised.
         var needGuard = false
         for (arg, spread) in zip(arguments, spreads) where spread == true {
-            needGuard = needGuard || b.type(of: arg).MayNotBe(.iterable)
+            needGuard = needGuard || b.type(of: arg).MayNotBe(.iterable())
         }
         b.callComputedMethod(
             method, on: obj, withArgs: arguments, spreading: spreads,
@@ -2164,7 +2164,7 @@ public let CodeGenerators: [CodeGenerator] = [
         var needGuard = b.type(of: f).MayNotBe(.function())
         // Spreading requires the spread values to be iterable, otherwise an exception will be raised.
         for (arg, spread) in zip(arguments, spreads) where spread == true {
-            needGuard = needGuard || b.type(of: arg).MayNotBe(.iterable)
+            needGuard = needGuard || b.type(of: arg).MayNotBe(.iterable())
         }
         b.callFunction(
             f, withArgs: arguments, spreading: spreads, guard: needGuard)
@@ -2178,7 +2178,7 @@ public let CodeGenerators: [CodeGenerator] = [
         var needGuard = b.type(of: c).MayNotBe(.constructor())
         // Spreading requires the spread values to be iterable, otherwise an exception will be raised.
         for (arg, spread) in zip(arguments, spreads) where spread == true {
-            needGuard = needGuard || b.type(of: arg).MayNotBe(.iterable)
+            needGuard = needGuard || b.type(of: arg).MayNotBe(.iterable())
         }
         b.construct(
             c, withArgs: arguments, spreading: spreads, guard: needGuard)
@@ -2244,7 +2244,7 @@ public let CodeGenerators: [CodeGenerator] = [
 
     CodeGenerator(
         "YieldEachGenerator", inContext: .single(.generatorFunction),
-        inputs: .required(.iterable)
+        inputs: .required(.iterable())
     ) { b, val in
         b.yieldEach(val)
     },
@@ -2284,7 +2284,7 @@ public let CodeGenerators: [CodeGenerator] = [
         b.reassign(variable: v, value: newValue)
     },
 
-    CodeGenerator("DestructArrayGenerator", inputs: .preferred(.iterable)) {
+    CodeGenerator("DestructArrayGenerator", inputs: .preferred(.iterable())) {
         b, arr in
         // Fuzzilli generated arrays can have a length ranging from 0 to 10 elements,
         // We want to ensure that 1) when destructing arrays we are usually within this length range
@@ -2305,7 +2305,7 @@ public let CodeGenerators: [CodeGenerator] = [
     },
 
     CodeGenerator(
-        "DestructArrayAndReassignGenerator", inputs: .preferred(.iterable)
+        "DestructArrayAndReassignGenerator", inputs: .preferred(.iterable())
     ) { b, arr in
         var candidates: [Variable] = []
         var indices: [Int64] = []
@@ -2727,7 +2727,7 @@ public let CodeGenerators: [CodeGenerator] = [
         [
             GeneratorStub(
                 "ForOfLoopBeginGenerator",
-                inputs: .preferred(.iterable),
+                inputs: .preferred(.iterable()),
                 provides: [.loop, .javascript]
             ) { b, obj in
                 b.emit(BeginForOfLoop(), withInputs: [obj])
@@ -2745,7 +2745,7 @@ public let CodeGenerators: [CodeGenerator] = [
         [
             GeneratorStub(
                 "ForOfWithDestructLoopBeginGenerator",
-                inputs: .preferred(.iterable),
+                inputs: .preferred(.iterable()),
                 provides: [.loop, .javascript]
             ) { b, obj in
                 var indices: [Int64] = []
@@ -3299,7 +3299,7 @@ public let CodeGenerators: [CodeGenerator] = [
         }
     },
 
-    CodeGenerator("IteratorGenerator", produces: [.iterable]) { b in
+    CodeGenerator("IteratorGenerator", produces: [.iterable()]) { b in
         let iteratorSymbol = b.createSymbolProperty("iterator")
         b.hide(iteratorSymbol)
         let iterableObject = b.buildObjectLiteral { obj in
@@ -3323,7 +3323,7 @@ public let CodeGenerators: [CodeGenerator] = [
         }
 
         // Manually mark the object as iterable as our static type inference cannot determine that.
-        b.setType(ofVariable: iterableObject, to: .iterable + .object())
+        b.setType(ofVariable: iterableObject, to: .iterable() + .object())
     },
 
     CodeGenerator("LoadNewTargetGenerator", inContext: .single(.subroutine)) { b in

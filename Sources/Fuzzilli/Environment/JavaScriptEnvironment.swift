@@ -1199,7 +1199,7 @@ public struct OptionsBag {
         let properties = properties.mapValues {
             // This list can be expanded over time as long as createOptionsBag() supports this
             assert(
-                $0.isEnumeration || $0.Is(.number | .integer | .boolean | .iterable)
+                $0.isEnumeration || $0.Is(.number | .integer | .boolean | .iterable())
                     // Has a producing generator registered
                     || $0.Is(.jsTemporalPlainTime)
                     // Has explicit support in createOptionsBag
@@ -1232,7 +1232,7 @@ extension ILType {
     /// Type of a string in JavaScript.
     /// A JS string is both a string and an object on which methods can be called.
     public static let jsString =
-        ILType.string + ILType.iterable
+        ILType.string + ILType.iterable()
         + ILType.object(
             ofGroup: "String", withProperties: ["length"],
             withMethods: [
@@ -1261,7 +1261,7 @@ extension ILType {
 
     /// Type of a JavaScript array.
     public static let jsArray =
-        ILType.iterable
+        ILType.iterable()
         + ILType.object(
             ofGroup: "Array", withProperties: ["length"],
             withMethods: [
@@ -1275,11 +1275,12 @@ extension ILType {
 
     /// Type of a JavaScript function's arguments object.
     public static let jsArguments =
-        ILType.iterable + ILType.object(ofGroup: "Arguments", withProperties: ["length", "callee"])
+        ILType.iterable()
+        + ILType.object(ofGroup: "Arguments", withProperties: ["length", "callee"])
 
     /// Type of a JavaScript Iterator object.
     public static let jsIterator =
-        ILType.iterable
+        ILType.iterable()
         + ILType.object(
             ofGroup: "Iterator", withProperties: ["value", "done"],
             withMethods: [
@@ -1294,7 +1295,7 @@ extension ILType {
 
     /// Type of a JavaScript generator object.
     public static let jsGenerator =
-        ILType.iterable
+        ILType.iterable()
         + ILType.object(ofGroup: "Generator", withMethods: ["next", "return", "throw"])
 
     /// Type of a JavaScript Promise object.
@@ -1303,7 +1304,7 @@ extension ILType {
 
     /// Type of a JavaScript Map object.
     public static let jsMap =
-        ILType.iterable
+        ILType.iterable()
         + ILType.object(
             ofGroup: "Map", withProperties: ["size"],
             withMethods: [
@@ -1318,7 +1319,7 @@ extension ILType {
 
     /// Type of a JavaScript Set object.
     public static let jsSet =
-        ILType.iterable
+        ILType.iterable()
         + ILType.object(
             ofGroup: "Set", withProperties: ["size"],
             withMethods: [
@@ -1375,7 +1376,7 @@ extension ILType {
     public static func jsTypedArray(_ variant: String) -> ILType {
         let extraMethods =
             variant == "Uint8Array" ? ["setFromBase64", "setFromHex", "toBase64", "toHex"] : []
-        return .iterable
+        return .iterable()
             + .object(
                 ofGroup: variant,
                 withProperties: [
@@ -1492,7 +1493,7 @@ extension ILType {
     public static func jsErrorConstructor(_ variant: String) -> ILType {
         let signature =
             if variant == "AggregateError" {
-                [.plain(.iterable), .opt(.string), .opt(.object())] => .jsError("AggregateError")
+                [.plain(.iterable()), .opt(.string), .opt(.object())] => .jsError("AggregateError")
             } else {
                 [.opt(.string)] => .jsError(variant)
             }
@@ -5075,7 +5076,7 @@ extension OptionsBag {
         name: "IteratorZipSettings",
         properties: [
             "mode": jsIteratorZipModeEnum,
-            "padding": .iterable,
+            "padding": .iterable(),
         ]
     )
 }

@@ -977,6 +977,13 @@ class TypeSystemTests: XCTestCase {
                     XCTAssertFalse(t1.canMerge(with: t2))
                 }
 
+                // Iterables with different parameterization cannot be merged.
+                else if t1.iterableElementType != nil && t2.iterableElementType != nil
+                    && t1.iterableElementType != t2.iterableElementType
+                {
+                    XCTAssertFalse(t1.canMerge(with: t2))
+                }
+
                 // Everything else can be merged
                 else {
                     XCTAssert(t1.canMerge(with: t2), "\(t1) \(t2)")
@@ -1145,7 +1152,7 @@ class TypeSystemTests: XCTestCase {
         XCTAssertEqual(ILType.regexp.description, ".regexp")
         XCTAssertEqual(ILType.boolean.description, ".boolean")
         XCTAssertEqual(ILType.bigint.description, ".bigint")
-        XCTAssertEqual(ILType.iterable.description, ".iterable")
+        XCTAssertEqual(ILType.iterable().description, ".iterable")
 
         // Test object types
         XCTAssertEqual(ILType.object().description, ".object()")
@@ -1548,6 +1555,41 @@ class TypeSystemTests: XCTestCase {
         XCTAssertEqual(receiverObject.intersection(with: receiverNil), receiverObject)
     }
 
+    func testParameterizedIterables() {
+        let intIterable = ILType.iterable(ofElementType: .integer)
+        let strIterable = ILType.iterable(ofElementType: .string)
+        let multiIterable = ILType.iterable(ofElementType: .integer | .string)
+        let objIterable = ILType.iterable(ofElementType: .object(withProperties: ["foo"]))
+        let objIterable2 = ILType.iterable(ofElementType: .object(withProperties: ["foo", "bar"]))
+
+        XCTAssertEqual(intIterable, ILType.iterable(ofElementType: .integer))
+        XCTAssertNotEqual(intIterable, strIterable)
+        XCTAssertNotEqual(intIterable, .iterable())
+        XCTAssert(.iterable() >= intIterable)
+        XCTAssert(multiIterable >= intIterable)
+        XCTAssert(multiIterable >= strIterable)
+        XCTAssertFalse(intIterable >= .iterable())
+        XCTAssertFalse(intIterable >= strIterable)
+        XCTAssert(objIterable >= objIterable2)
+        XCTAssertFalse(objIterable2 >= objIterable)
+
+        XCTAssertEqual(intIterable | strIterable, multiIterable)
+        XCTAssertEqual(.iterable() | strIterable, .iterable())
+
+        XCTAssertEqual(intIterable & strIterable, ILType.iterable(ofElementType: .nothing))
+        XCTAssertEqual(.iterable() & strIterable, strIterable)
+
+        XCTAssert(intIterable.canMerge(with: intIterable))
+        XCTAssertFalse(intIterable.canMerge(with: strIterable))
+        XCTAssert(ILType.iterable().canMerge(with: intIterable))
+        XCTAssertEqual(intIterable.merging(with: intIterable), intIterable)
+        XCTAssertEqual(.iterable().merging(with: intIterable), intIterable)
+        XCTAssertEqual(intIterable.merging(with: .iterable()), intIterable)
+
+        XCTAssertEqual(intIterable.description, ".iterable<.integer>")
+        XCTAssertEqual(multiIterable.description, ".iterable<.integer | .string>")
+    }
+
     func testEnumerationTypeOperations() {
         let enumA = ILType.enumeration(ofName: "EnumA", withValues: ["A", "B"])
         let enumB = ILType.intEnumeration(ofName: "EnumB", withValues: [1, 2])
@@ -1604,7 +1646,10 @@ class TypeSystemTests: XCTestCase {
             .boolean,
             .bigint,
             .regexp,
-            .iterable,
+            .iterable(),
+            .iterable(ofElementType: .integer),
+            .iterable(ofElementType: .string),
+            .iterable(ofElementType: .integer | .string),
             .jsAnything,
             .nothing,
             .object(),

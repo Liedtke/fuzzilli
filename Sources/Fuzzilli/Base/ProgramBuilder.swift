@@ -802,7 +802,15 @@ public class ProgramBuilder {
                     let (pattern, flags) = self.randomRegExpPatternAndFlags()
                     return self.loadRegExp(pattern, flags)
                 },
-            .iterable: { return self.createArray(with: [self.randomJsVariable()]) },
+            .iterable():
+                {
+                    guard let iterableElementType = type.iterableElementType else {
+                        return self.createArray(with: [self.randomJsVariable()])
+                    }
+
+                    let element = self.generateTypeInternal(iterableElementType)
+                    return self.createArray(with: [element])
+                },
             .function():
                 {
                     // TODO: We could technically generate a full function here but then we would enter the full code generation logic which could do anything.
@@ -1322,7 +1330,7 @@ public class ProgramBuilder {
             let val = randomJsVariable()
             arguments.append(val)
             // Prefer to spread values that we know are iterable, as non-iterable values will lead to exceptions ("TypeError: Found non-callable @@iterator")
-            if type(of: val).Is(.iterable) {
+            if type(of: val).Is(.iterable()) {
                 spreads.append(probability(0.9))
             } else {
                 spreads.append(probability(0.1))

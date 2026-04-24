@@ -2887,6 +2887,23 @@ class ProgramBuilderTests: XCTestCase {
         }
     }
 
+    func testFindOrGenerateTypeParameterizedIterable() {
+        let env = JavaScriptEnvironment()
+        let config = Configuration(logLevel: .error)
+        let fuzzer = makeMockFuzzer(config: config, environment: env)
+        let b = fuzzer.makeBuilder()
+        let strIterableType = ILType.iterable(ofElementType: .jsString)
+
+        // To prevent crash on assert that there are visible variables
+        b.loadString("foo")
+
+        _ = b.findOrGenerateType(strIterableType)
+        let instruction = b.lastInstruction()
+        XCTAssertTrue(instruction.op is CreateArray)
+        XCTAssertEqual(instruction.numInputs, 1)
+        XCTAssertTrue(b.type(of: instruction.inputs[0]).Is(.jsString))
+    }
+
     func testFindOrGenerateWithCodeGenerator() {
         let type1 = ILType.object(ofGroup: "group1", withProperties: [], withMethods: [])
         let group1 = ObjectGroup(name: "group1", instanceType: type1, properties: [:], methods: [:])
