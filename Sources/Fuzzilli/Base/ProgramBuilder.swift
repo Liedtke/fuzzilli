@@ -6098,7 +6098,10 @@ public class ProgramBuilder {
     private func internalAppend(_ instr: Instruction) -> Instruction {
         // Basic integrity checking
         assert(!instr.inouts.contains(where: { $0.number >= numVariables }))
-        assert(instr.op.requiredContext.isSubset(of: contextAnalyzer.context))
+        assert(
+            instr.op.requiredContext.isSubset(of: contextAnalyzer.context),
+            "current context is \(contextAnalyzer.context), expected \(instr.op.requiredContext) by \(instr.op.name)"
+        )
 
         // The returned instruction will also contain its index in the program. Use that so the analyzers have access to the index.
         let instr = code.append(instr)
