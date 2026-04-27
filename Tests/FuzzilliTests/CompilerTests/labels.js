@@ -63,3 +63,13 @@ FO1: for (let x of [1, 2]) {
         continue FO2;
     }
 }
+
+
+S1: switch (true) {
+        case true:
+            S2: switch (true) {
+                case true:
+                    break S1;
+                    break S2;
+            }
+}

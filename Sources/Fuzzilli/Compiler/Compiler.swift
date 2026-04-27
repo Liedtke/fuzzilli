@@ -319,7 +319,8 @@ public class JavaScriptCompiler {
 
         if pendingLabel != nil {
             switch stmt {
-            case .blockStatement, .whileLoop, .doWhileLoop, .forLoop, .forInLoop, .forOfLoop:
+            case .blockStatement, .switchStatement, .whileLoop, .doWhileLoop, .forLoop, .forInLoop,
+                .forOfLoop:
                 break
             default:
                 throw CompilerError.unsupportedFeatureError("Labels are not supported on \(stmt)")
@@ -681,6 +682,7 @@ public class JavaScriptCompiler {
                 try compileBody(withStatement.body)
             }
             emit(EndWith())
+
         case .switchStatement(let switchStatement):
             // TODO Replace the precomputation of tests with compilation of the test expressions in the cases.
             // To do this, we would need to redesign Switch statements in FuzzIL to (for example) have a BeginSwitchCaseHead, BeginSwitchCaseBody, and EndSwitchCase.
@@ -693,21 +695,25 @@ public class JavaScriptCompiler {
                 }
             }
             let discriminant = try compileExpression(switchStatement.discriminant)
-            emit(BeginSwitch(), withInputs: [discriminant])
-            for caseStatement in switchStatement.cases {
-                if caseStatement.hasTest {
-                    emit(BeginSwitchCase(), withInputs: [precomputedTests.removeFirst()])
-                } else {
-                    emit(BeginSwitchDefaultCase())
-                }
-                try enterNewScope {
-                    for statement in caseStatement.consequent {
-                        try compileStatement(statement)
+            let instr = emit(BeginSwitch(), withInputs: [discriminant])
+            try enterNewScope(
+                labelToRegister: pendingLabel, labelVariable: instr.innerOutput, isLoop: false
+            ) {
+                for caseStatement in switchStatement.cases {
+                    if caseStatement.hasTest {
+                        emit(BeginSwitchCase(), withInputs: [precomputedTests.removeFirst()])
+                    } else {
+                        emit(BeginSwitchDefaultCase())
                     }
+                    try enterNewScope {
+                        for statement in caseStatement.consequent {
+                            try compileStatement(statement)
+                        }
+                    }
+                    // We could also do an optimization here where we check if the last statement in the case is a break, and if so, we drop the last instruction
+                    // and set the fallsThrough flag to false.
+                    emit(EndSwitchCase(fallsThrough: true))
                 }
-                // We could also do an optimization here where we check if the last statement in the case is a break, and if so, we drop the last instruction
-                // and set the fallsThrough flag to false.
-                emit(EndSwitchCase(fallsThrough: true))
             }
             emit(EndSwitch())
 
