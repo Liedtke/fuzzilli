@@ -558,13 +558,13 @@ public struct ILType: Hashable {
             return false
         }
 
-        // If you add a new custom object group, please check the logic below.
         // Make sure that the groups themselves are not prefixes.
         assert(
-            ILType.dynamicObjectGroupPrefixes == [
-                "_fuzz_Object", "_fuzz_WasmModule", "_fuzz_WasmExports", "_fuzz_Class",
-                "_fuzz_Constructor",
-            ])
+            !ILType.dynamicObjectGroupPrefixes.contains { groupType1 in
+                ILType.dynamicObjectGroupPrefixes.contains { groupType2 in
+                    groupType1.hasPrefix(groupType2) && groupType1 != groupType2
+                }
+            })
 
         for groupType in ILType.dynamicObjectGroupPrefixes {
             if rhs.hasPrefix(groupType) && lhs.hasPrefix(groupType) {
