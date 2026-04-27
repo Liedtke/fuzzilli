@@ -319,7 +319,8 @@ public class JavaScriptCompiler {
 
         if pendingLabel != nil {
             switch stmt {
-            case .blockStatement, .switchStatement, .whileLoop, .doWhileLoop, .forLoop, .forInLoop,
+            case .blockStatement, .ifStatement, .switchStatement, .whileLoop, .doWhileLoop,
+                .forLoop, .forInLoop,
                 .forOfLoop:
                 break
             default:
@@ -453,13 +454,18 @@ public class JavaScriptCompiler {
 
         case .ifStatement(let ifStatement):
             let test = try compileExpression(ifStatement.test)
-            emit(BeginIf(inverted: false), withInputs: [test])
-            try enterNewScope {
+            let beginIf = emit(BeginIf(inverted: false), withInputs: [test])
+            try enterNewScope(
+                labelToRegister: pendingLabel, labelVariable: beginIf.innerOutput, isLoop: false
+            ) {
                 try compileBody(ifStatement.ifBody)
             }
             if ifStatement.hasElseBody {
-                emit(BeginElse())
-                try enterNewScope {
+                let beginElse = emit(BeginElse())
+                try enterNewScope(
+                    labelToRegister: pendingLabel, labelVariable: beginElse.innerOutput,
+                    isLoop: false
+                ) {
                     try compileBody(ifStatement.elseBody)
                 }
             }

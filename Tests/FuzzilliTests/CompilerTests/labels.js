@@ -64,7 +64,6 @@ FO1: for (let x of [1, 2]) {
     }
 }
 
-
 S1: switch (true) {
         case true:
             S2: switch (true) {
@@ -72,4 +71,20 @@ S1: switch (true) {
                     break S1;
                     break S2;
             }
+}
+
+I1: if (true) {
+    I2: if (true) {
+        break I1;
+        break I2;
+    } else {
+        break I1;
+        break I2;
+    }
+} else {
+    I3: if (true) {
+        break I1;
+    } else {
+        break I3;
+    }
 }
