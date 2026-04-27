@@ -866,7 +866,7 @@ public class OperationMutator: BaseInstructionMutator {
     {
         // Without visible variables, we can't add a new input to this instruction.
         // This should happen rarely, so just skip this mutation.
-        guard b.hasVisibleVariables else { return instr }
+        guard b.hasVisibleJsVariables else { return instr }
 
         let newOp: Operation
         var inputs = instr.inputs

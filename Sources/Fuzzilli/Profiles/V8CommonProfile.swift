@@ -313,7 +313,7 @@ public let MapTransitionFuzzer = ProgramTemplate("MapTransitionFuzzer") { b in
 
     // Helper function to pick random properties and values.
     func randomProperties(in b: ProgramBuilder) -> ([String], [Variable]) {
-        if !b.hasVisibleVariables {
+        if !b.hasVisibleJsVariables {
             // Use integer values if there are no visible variables, which should be a decent fallback.
             b.loadInt(b.randomInt())
         }
@@ -375,7 +375,7 @@ public let MapTransitionFuzzer = ProgramTemplate("MapTransitionFuzzer") { b in
     }
     let objectClassGenerator = CodeGenerator("ObjectClassGenerator") { b in
         let superclass =
-            b.hasVisibleVariables && probability(0.5)
+            b.hasVisibleJsVariables && probability(0.5)
             ? b.randomVariable(ofType: .constructor()) : nil
         let (properties, values) = randomProperties(in: b)
         let cls = b.buildClassDefinition(withSuperclass: superclass) { cls in

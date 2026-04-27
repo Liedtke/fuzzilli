@@ -980,7 +980,7 @@ public class ProgramBuilder {
 
     /// Returns a random JavaScript variable.
     public func randomJsVariable() -> Variable {
-        assert(hasVisibleVariables)
+        assert(hasVisibleJsVariables)
         return randomVariable(ofType: .jsAnything)!
     }
 
@@ -996,7 +996,7 @@ public class ProgramBuilder {
     /// Returns up to N (different) random JavaScript variables.
     /// This method will only return fewer than N variables if the number of currently visible variables is less than N.
     public func randomJsVariables(upTo n: Int) -> [Variable] {
-        guard hasVisibleVariables else { return [] }
+        guard hasVisibleJsVariables else { return [] }
 
         var variables = [Variable]()
         while variables.count < n {
@@ -1014,7 +1014,7 @@ public class ProgramBuilder {
 
     /// Returns up to N potentially duplicate random JavaScript variables.
     public func randomJsVariables(n: Int) -> [Variable] {
-        assert(hasVisibleVariables)
+        assert(hasVisibleJsVariables)
         return (0..<n).map { _ in randomJsVariable() }
     }
 
@@ -2100,7 +2100,7 @@ public class ProgramBuilder {
                 // visible Variables. Therefore we should always have some Variables visible if we want to use them.
 
                 assert(
-                    isBundle || hasVisibleVariables,
+                    isBundle || hasVisibleJsVariables,
                     "CodeGenerators assume that there are visible variables to use. Use buildPrefix() to generate some initial variables in a new program"
                 )
 

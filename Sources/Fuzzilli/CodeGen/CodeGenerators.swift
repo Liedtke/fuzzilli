@@ -83,7 +83,7 @@ func disposableClassVariableGeneratorStubs(
             // Possibly pick a superclass.
             // The superclass must be a constructor (or null).
             var superclass: Variable? = nil
-            if probability(0.5) && b.hasVisibleVariables {
+            if probability(0.5) && b.hasVisibleJsVariables {
                 superclass = b.randomVariable(ofType: .constructor())
             }
             let inputs = superclass != nil ? [superclass!] : []
@@ -202,7 +202,7 @@ public let CodeGenerators: [CodeGenerator] = [
 
     CodeGenerator("ArrayGenerator", produces: [.jsArray]) { b in
         // If we can only generate empty arrays, then only create one such array.
-        if !b.hasVisibleVariables {
+        if !b.hasVisibleJsVariables {
             b.createArray(with: [])
         } else {
             let initialValues = (0..<Int.random(in: 1...5)).map({ _ in
@@ -509,7 +509,7 @@ public let CodeGenerators: [CodeGenerator] = [
         b in
         var objType = ILType.object()
         let f = b.buildPlainFunction(with: b.randomParameters()) { args in
-            if !b.hasVisibleVariables {
+            if !b.hasVisibleJsVariables {
                 // Just create some random number- or string values for the object to use.
                 for _ in 0..<3 {
                     withEqualProbability(
@@ -564,7 +564,7 @@ public let CodeGenerators: [CodeGenerator] = [
             // Add a few random properties to the |this| object.
             for property in properties {
                 let value =
-                    b.hasVisibleVariables
+                    b.hasVisibleJsVariables
                     ? b.randomJsVariable() : b.loadInt(b.randomInt())
                 b.setProperty(property, of: this, to: value)
             }
@@ -592,7 +592,7 @@ public let CodeGenerators: [CodeGenerator] = [
                 // Possibly pick a superclass.
                 // The superclass must be a constructor (or null).
                 var superclass: Variable? = nil
-                if probability(0.4) && b.hasVisibleVariables {
+                if probability(0.4) && b.hasVisibleJsVariables {
                     superclass = b.randomVariable(ofType: .constructor())
                 } else if probability(0.2) {
                     superclass = b.buildPlainFunction(with: .parameters(n: 1)) {
@@ -628,7 +628,7 @@ public let CodeGenerators: [CodeGenerator] = [
         // Generating more than one function has a fairly high probability of generating
         // essentially identical functions, so we just generate one.
         let maybeReturnValue =
-            b.hasVisibleVariables ? b.randomJsVariable() : nil
+            b.hasVisibleJsVariables ? b.randomJsVariable() : nil
         b.buildPlainFunction(with: .parameters(n: 0)) { _ in
             if let returnValue = maybeReturnValue {
                 b.doReturn(returnValue)
