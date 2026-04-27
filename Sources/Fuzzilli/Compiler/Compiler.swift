@@ -41,8 +41,8 @@ public class JavaScriptCompiler {
     /// Contains the mapping from JavaScript variables to FuzzIL variables in every active scope.
     private var scopes = Stack<[String: Variable]>()
 
-    /// Contains the mapping from JavaScript labels to FuzzIL variables in every active scope.
-    private var labelsStack = Stack<(String?, Variable?)>()
+    /// Contains a tuple for every active scope.
+    private var labelsStack = Stack<(label: String?, variable: Variable?, isLoopLabel: Bool?)>()
 
     /// The next free FuzzIL variable.
     private var nextVariable = 0
@@ -318,10 +318,11 @@ public class JavaScriptCompiler {
         }
 
         if pendingLabel != nil {
-            // TODO(bettscheider): Also check for .whileLoop etc. once this is implemented.
-            guard case .blockStatement = stmt else {
-                throw CompilerError.unsupportedFeatureError(
-                    "Labels are only supported on block statements for now")
+            switch stmt {
+            case .blockStatement, .whileLoop, .doWhileLoop, .forLoop, .forInLoop, .forOfLoop:
+                break
+            default:
+                throw CompilerError.unsupportedFeatureError("Labels are not supported on \(stmt)")
             }
         }
 
@@ -333,7 +334,7 @@ public class JavaScriptCompiler {
         case .blockStatement(let blockStatement):
             let instr = emit(BeginBlockStatement())
             try enterNewScope(
-                labelToRegister: pendingLabel, labelVariable: instr.innerOutput
+                labelToRegister: pendingLabel, labelVariable: instr.innerOutput, isLoop: false
             ) {
                 for statement in blockStatement.body {
                     try compileStatement(statement)
@@ -465,22 +466,28 @@ public class JavaScriptCompiler {
 
         case .whileLoop(let whileLoop):
             emit(BeginWhileLoopHeader())
+            var loopLabelVariable: Variable? = nil
 
             try enterNewScope {
                 let cond = try compileExpression(whileLoop.test)
-                emit(BeginWhileLoopBody(), withInputs: [cond])
+                let instr = emit(BeginWhileLoopBody(), withInputs: [cond])
+                loopLabelVariable = instr.innerOutput
             }
 
-            try enterNewScope {
+            try enterNewScope(
+                labelToRegister: pendingLabel, labelVariable: loopLabelVariable, isLoop: true
+            ) {
                 try compileBody(whileLoop.body)
             }
 
             emit(EndWhileLoop())
 
         case .doWhileLoop(let doWhileLoop):
-            emit(BeginDoWhileLoopBody())
+            let instr = emit(BeginDoWhileLoopBody())
 
-            try enterNewScope {
+            try enterNewScope(
+                labelToRegister: pendingLabel, labelVariable: instr.innerOutput, isLoop: true
+            ) {
                 try compileBody(doWhileLoop.body)
             }
 
@@ -541,9 +548,13 @@ public class JavaScriptCompiler {
             }
 
             // Process body
-            outputs = emit(BeginForLoopBody(numLoopVariables: loopVariables.count)).innerOutputs
-                .dropLast()
-            try enterNewScope {
+            let bodyInstr = emit(BeginForLoopBody(numLoopVariables: loopVariables.count))
+            outputs = bodyInstr.innerOutputs.dropLast()
+            let loopLabelVariable = bodyInstr.innerOutputs.last!
+
+            try enterNewScope(
+                labelToRegister: pendingLabel, labelVariable: loopLabelVariable, isLoop: true
+            ) {
                 zip(loopVariables, outputs).forEach({ map($0, to: $1) })
                 try compileBody(forLoop.body)
             }
@@ -559,8 +570,12 @@ public class JavaScriptCompiler {
 
             let obj = try compileExpression(forInLoop.right)
 
-            let loopVar = emit(BeginForInLoop(), withInputs: [obj]).innerOutput(0)
-            try enterNewScope {
+            let instr = emit(BeginForInLoop(), withInputs: [obj])
+            let loopVar = instr.innerOutput(0)
+            let loopLabelVariable = instr.innerOutput(1)
+            try enterNewScope(
+                labelToRegister: pendingLabel, labelVariable: loopLabelVariable, isLoop: true
+            ) {
                 map(initializer.name, to: loopVar)
                 try compileBody(forInLoop.body)
             }
@@ -576,8 +591,12 @@ public class JavaScriptCompiler {
 
             let obj = try compileExpression(forOfLoop.right)
 
-            let loopVar = emit(BeginForOfLoop(), withInputs: [obj]).innerOutput(0)
-            try enterNewScope {
+            let instr = emit(BeginForOfLoop(), withInputs: [obj])
+            let loopVar = instr.innerOutput(0)
+            let loopLabelVariable = instr.innerOutput(1)
+            try enterNewScope(
+                labelToRegister: pendingLabel, labelVariable: loopLabelVariable, isLoop: true
+            ) {
                 map(initializer.name, to: loopVar)
                 try compileBody(forOfLoop.body)
             }
@@ -586,11 +605,15 @@ public class JavaScriptCompiler {
 
         case .breakStatement(let breakStatement):
             if !breakStatement.label.isEmpty {
-                guard let labelVar = lookupLabel(breakStatement.label) else {
+                guard let (labelVar, isLoop) = lookupLabel(breakStatement.label) else {
                     throw CompilerError.invalidNodeError("unknown label: \(breakStatement.label)")
                 }
 
-                emit(BlockBreak(), withInputs: [labelVar])
+                if isLoop {
+                    emit(LoopBreak(hasLabel: true), withInputs: [labelVar])
+                } else {
+                    emit(BlockBreak(), withInputs: [labelVar])
+                }
             } else {
                 // If we're in both .loop and .switch context, then the loop must be the most recent context
                 // (switch blocks don't propagate an outer .loop context) so we just need to check for .loop here
@@ -604,8 +627,20 @@ public class JavaScriptCompiler {
                 }
             }
 
-        case .continueStatement:
-            emit(LoopContinue())
+        case .continueStatement(let continueStatement):
+            if !continueStatement.label.isEmpty {
+                guard let (labelVar, isLoop) = lookupLabel(continueStatement.label) else {
+                    throw CompilerError.invalidNodeError(
+                        "unknown label: \(continueStatement.label)")
+                }
+                guard isLoop else {
+                    throw CompilerError.invalidNodeError(
+                        "continue statement with non-loop label: \(continueStatement.label)")
+                }
+                emit(LoopContinue(hasLabel: true), withInputs: [labelVar])
+            } else {
+                emit(LoopContinue())
+            }
 
         case .tryStatement(let tryStatement):
             emit(BeginTry())
@@ -1503,17 +1538,21 @@ public class JavaScriptCompiler {
     }
 
     private func enterNewScope(
-        labelToRegister: String? = nil, labelVariable: Variable? = nil, _ block: () throws -> Void
+        labelToRegister: String? = nil, labelVariable: Variable? = nil, isLoop: Bool? = nil,
+        _ block: () throws -> Void
     ) rethrows {
         scopes.push([:])
-        labelsStack.push((labelToRegister, labelVariable))
+        labelsStack.push((label: labelToRegister, variable: labelVariable, isLoopLabel: isLoop))
         try block()
         labelsStack.pop()
         scopes.pop()
     }
 
-    private func lookupLabel(_ name: String) -> Variable? {
-        labelsStack.elementsStartingAtTop().first { $0.0 == name }?.1
+    private func lookupLabel(_ name: String) -> (Variable, Bool)? {
+        if let entry = labelsStack.elementsStartingAtTop().first(where: { $0.label == name }) {
+            return (entry.variable!, entry.isLoopLabel!)
+        }
+        return nil
     }
 
     private func map(_ identifier: String, to v: Variable) {

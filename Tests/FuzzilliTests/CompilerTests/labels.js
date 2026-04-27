@@ -28,4 +28,38 @@ L4: {
         }
     }
 }
-console.log("2");
+
+F1: for (let i = 0; i < 10; i++) {
+    F2: for (let j = 0; j < 10; j++) {
+        if (j == 5) continue F1;
+        if (i == 1) break F1;
+    }
+}
+
+W1: while (true) {
+    W2: while(true) {
+        break W1;
+        continue W2;
+    }
+}
+
+D1: do {
+    D2: do {
+        break D1;
+        continue D2;
+    } while (true);
+} while (true);
+
+FI1: for (let x in {a: 1}) {
+    FI2: for (let y in {a: 1}) {
+        break FI1;
+        continue FI2;
+    }
+}
+
+FO1: for (let x of [1, 2]) {
+    FO2: for (let y of [1, 2]) {
+        break FO1;
+        continue FO2;
+    }
+}

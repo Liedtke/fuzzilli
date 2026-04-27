@@ -366,7 +366,11 @@ function parse(script, proto) {
               return makeStatement('BreakStatement', breakStmt);
             }
             case 'ContinueStatement': {
-              return makeStatement('ContinueStatement', {});
+              let continueStmt = {};
+              if (node.label !== null) {
+                  continueStmt.label = node.label.name;
+              }
+              return makeStatement('ContinueStatement', continueStmt);
             }
             case 'LabeledStatement': {
                 let labeledStmt = {};
