@@ -71,7 +71,11 @@ public class ExplorationMutator: RuntimeAssistedMutator {
             guard !(instr.op is WasmOperation || instr.op is WasmTypeOperation) else { continue }
 
             for v in instr.allOutputs {
-                if b.type(of: v) == .jsAnything || b.type(of: v) == .unknownObject {
+                let type = b.type(of: v)
+                if !type.Is(.jsAnything) {
+                    // Skip .jsBlockLabel, .jsLoopLabel, ...
+                    continue
+                } else if type == .jsAnything || type == .unknownObject {
                     untypedVariables.append(v)
                 } else {
                     typedVariables.append(v)
