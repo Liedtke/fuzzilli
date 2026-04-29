@@ -1666,15 +1666,7 @@ public class JavaScriptLifter: Lifter {
                         "\(LET) \(V) = new WebAssembly.Instance(new WebAssembly.Module(new Uint8Array(["
                     )
                     w.enterNewBlock()
-                    let blockSize = 10
-                    for chunk in stride(from: 0, to: bytecode.count, by: blockSize).map({
-                        Array(bytecode[$0..<Swift.min($0 + blockSize, bytecode.count)])
-                    }) {
-                        let byteString =
-                            chunk.map({ String(format: "0x%02X", $0) }).joined(separator: ", ")
-                            + ","
-                        w.emit("\(byteString)")
-                    }
+                    liftByteArray([UInt8](bytecode), to: &w)
                     w.leaveCurrentBlock()
                     if importRefs.isEmpty {
                         w.emit("])));")
@@ -1716,6 +1708,17 @@ public class JavaScriptLifter: Lifter {
                     w.emit("throw \"Wasmlifting failed\";")
                 }
                 wasmInstructions.removeAll()
+
+            case .rawWasmModule(let op):
+                let LET = w.declarationKeyword(for: instr.output)
+                let V = w.declare(instr.output, as: "v\(instr.output.number)")
+                w.emit(
+                    "\(LET) \(V) = new WebAssembly.Instance(new WebAssembly.Module(new Uint8Array(["
+                )
+                w.enterNewBlock()
+                liftByteArray(op.bytes, to: &w)
+                w.leaveCurrentBlock()
+                w.emit("])));")
 
             case .createWasmTable(let op):
                 let V = w.declare(instr.output)
@@ -2169,6 +2172,16 @@ public class JavaScriptLifter: Lifter {
             parts.append("set: \(values[second])")
         }
         return "{ \(parts.joined(separator: ", ")) }"
+    }
+
+    private func liftByteArray(_ bytes: [UInt8], to w: inout JavaScriptWriter, blockSize: Int = 10)
+    {
+        let byteStrings = bytes.map { String(format: "0x%02X", $0) }
+        for i in stride(from: 0, to: byteStrings.count, by: blockSize) {
+            let chunk = byteStrings[i..<Swift.min(i + blockSize, byteStrings.count)]
+            let line = chunk.joined(separator: ", ")
+            w.emit("\(line),")
+        }
     }
 
     private func liftArrayDestructPattern(indices: [Int64], outputs: [String], hasRestElement: Bool)

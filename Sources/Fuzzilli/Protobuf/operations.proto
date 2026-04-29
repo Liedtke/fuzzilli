@@ -1674,3 +1674,33 @@ message BeginBundleScript {
 
 message EndBundleScript {
 }
+
+enum JSType {
+  NUMBER = 0;
+  BIGINT = 1;
+  OBJECT = 2;
+  UNDEFINED = 3;
+  ANYTHING = 4;
+}
+
+message JSSignature {
+  repeated JSType parameterTypes = 1;
+  JSType returnType = 2;
+}
+
+message WasmFunctionExport {
+  string name = 1;
+  JSSignature signature = 2;
+}
+
+message WasmModuleMetadata {
+  repeated WasmFunctionExport functions = 1;
+  repeated string globals = 2;
+  repeated string tables = 3;
+  repeated string tags = 4;
+}
+
+message RawWasmModule {
+  bytes bytes = 1;
+  WasmModuleMetadata metadata = 2;
+}

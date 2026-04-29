@@ -1731,6 +1731,32 @@ extension Instruction: ProtobufConvertible {
                 $0.wasmAnyConvertExtern = Fuzzilli_Protobuf_WasmAnyConvertExtern()
             case .wasmExternConvertAny(_):
                 $0.wasmExternConvertAny = Fuzzilli_Protobuf_WasmExternConvertAny()
+            case .rawWasmModule(let op):
+                $0.rawWasmModule = Fuzzilli_Protobuf_RawWasmModule.with {
+                    $0.bytes = Data(op.bytes)
+                    $0.metadata = Fuzzilli_Protobuf_WasmModuleMetadata.with { meta in
+                        meta.functions = op.metadata.functions.map { f in
+                            Fuzzilli_Protobuf_WasmFunctionExport.with {
+                                $0.name = f.name
+                                $0.signature = Fuzzilli_Protobuf_JSSignature.with { sig in
+                                    sig.parameterTypes = f.signature.parameters.map { param in
+                                        switch param {
+                                        case .plain(let t), .opt(let t):
+                                            return ILTypeToJSTypeEnum(t)
+                                        case .rest(_):
+                                            fatalError(
+                                                "Rest parameters are not expected in Wasm exports")
+                                        }
+                                    }
+                                    sig.returnType = ILTypeToJSTypeEnum(f.signature.outputType)
+                                }
+                            }
+                        }
+                        meta.globals = op.metadata.globals
+                        meta.tables = op.metadata.tables
+                        meta.tags = op.metadata.tags
+                    }
+                }
             }
         }
 
@@ -2793,6 +2819,21 @@ extension Instruction: ProtobufConvertible {
             op = WasmAnyConvertExtern()
         case .wasmExternConvertAny(_):
             op = WasmExternConvertAny()
+        case .rawWasmModule(let p):
+            let metadata = WasmModuleMetadata(
+                functions: p.metadata.functions.map { f in
+                    let params = f.signature.parameterTypes.map(JSTypeEnumToILType)
+                    let returns = JSTypeEnumToILType(f.signature.returnType)
+                    let parameterList = params.map { Parameter.plain($0) }
+                    return WasmModuleMetadata.FunctionExport(
+                        name: f.name, signature: Signature(expects: parameterList, returns: returns)
+                    )
+                },
+                globals: p.metadata.globals,
+                tables: p.metadata.tables,
+                tags: p.metadata.tags
+            )
+            op = RawWasmModule(bytes: [UInt8](p.bytes), metadata: metadata)
         }
 
         guard op.numInputs + op.numOutputs + op.numInnerOutputs == inouts.count else {
@@ -2807,5 +2848,34 @@ extension Instruction: ProtobufConvertible {
 
     init(from proto: ProtobufType) throws {
         try self.init(from: proto, with: nil)
+    }
+}
+
+private func ILTypeToJSTypeEnum(_ type: ILType) -> Fuzzilli_Protobuf_JSType {
+    if type.Is(.bigint) {
+        return .bigint
+    } else if type.Is(.number) {
+        return .number
+    } else if type.Is(.object()) {
+        return .object
+    } else if type.Is(.undefined) {
+        return .undefined
+    } else {
+        return .anything
+    }
+}
+
+private func JSTypeEnumToILType(_ type: Fuzzilli_Protobuf_JSType) -> ILType {
+    switch type {
+    case .number:
+        return .number
+    case .bigint:
+        return .bigint
+    case .object:
+        return .object()
+    case .undefined:
+        return .undefined
+    default:
+        return .jsAnything
     }
 }

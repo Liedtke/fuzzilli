@@ -1936,6 +1936,42 @@ public struct JSTyper: Analyzer {
         case .createTemplateString:
             set(instr.output, .jsString)
 
+        case .rawWasmModule(let op):
+            let groupName = "_fuzz_RawWasmExports_\(instr.index)"
+
+            var properties = [String: ILType]()
+            var methods = [String: [Signature]]()
+
+            for f in op.metadata.functions {
+                methods[f.name] = [f.signature]
+            }
+            for g in op.metadata.globals {
+                properties[g] = .object(withProperties: ["value"], withMethods: ["valueOf"])
+            }
+            for t in op.metadata.tables {
+                properties[t] = .object(
+                    withProperties: ["length"], withMethods: ["get", "grow", "set"])
+            }
+            for t in op.metadata.tags {
+                properties[t] = .object()
+            }
+
+            let exportsGroup = ObjectGroup(
+                name: groupName, instanceType: nil, properties: properties, overloads: methods)
+            dynamicObjectGroupManager.finalizedObjectGroups.append(exportsGroup)
+
+            let exportsType = exportsGroup.instanceType
+
+            let moduleGroupName = "_fuzz_RawWasmModule_\(instr.index)"
+            let moduleGroup = ObjectGroup(
+                name: moduleGroupName, instanceType: nil, properties: ["exports": exportsType],
+                overloads: [:])
+            dynamicObjectGroupManager.finalizedObjectGroups.append(moduleGroup)
+
+            // The instanceType is not nil here; it is automatically computed by the
+            // ObjectGroup constructor when passed as nil above.
+            set(instr.output, moduleGroup.instanceType)
+
         case .getProperty(let op):
             set(instr.output, inferPropertyType(of: op.propertyName, on: instr.input(0)))
 

@@ -1596,6 +1596,52 @@ public enum Fuzzilli_Protobuf_WasmAtomicCmpxchgType: SwiftProtobuf.Enum, Swift.C
 
 }
 
+public enum Fuzzilli_Protobuf_JSType: SwiftProtobuf.Enum, Swift.CaseIterable {
+  public typealias RawValue = Int
+  case number // = 0
+  case bigint // = 1
+  case object // = 2
+  case undefined // = 3
+  case anything // = 4
+  case UNRECOGNIZED(Int)
+
+  public init() {
+    self = .number
+  }
+
+  public init?(rawValue: Int) {
+    switch rawValue {
+    case 0: self = .number
+    case 1: self = .bigint
+    case 2: self = .object
+    case 3: self = .undefined
+    case 4: self = .anything
+    default: self = .UNRECOGNIZED(rawValue)
+    }
+  }
+
+  public var rawValue: Int {
+    switch self {
+    case .number: return 0
+    case .bigint: return 1
+    case .object: return 2
+    case .undefined: return 3
+    case .anything: return 4
+    case .UNRECOGNIZED(let i): return i
+    }
+  }
+
+  // The compiler won't synthesize support with the UNRECOGNIZED case.
+  public static let allCases: [Fuzzilli_Protobuf_JSType] = [
+    .number,
+    .bigint,
+    .object,
+    .undefined,
+    .anything,
+  ]
+
+}
+
 /// Parameters used by function definitions, not an operation by itself.
 public struct Fuzzilli_Protobuf_Parameters: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
@@ -6011,6 +6057,84 @@ public struct Fuzzilli_Protobuf_EndBundleScript: Sendable {
   public init() {}
 }
 
+public struct Fuzzilli_Protobuf_JSSignature: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var parameterTypes: [Fuzzilli_Protobuf_JSType] = []
+
+  public var returnType: Fuzzilli_Protobuf_JSType = .number
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct Fuzzilli_Protobuf_WasmFunctionExport: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var name: String = String()
+
+  public var signature: Fuzzilli_Protobuf_JSSignature {
+    get {_signature ?? Fuzzilli_Protobuf_JSSignature()}
+    set {_signature = newValue}
+  }
+  /// Returns true if `signature` has been explicitly set.
+  public var hasSignature: Bool {self._signature != nil}
+  /// Clears the value of `signature`. Subsequent reads from it will return its default value.
+  public mutating func clearSignature() {self._signature = nil}
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _signature: Fuzzilli_Protobuf_JSSignature? = nil
+}
+
+public struct Fuzzilli_Protobuf_WasmModuleMetadata: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var functions: [Fuzzilli_Protobuf_WasmFunctionExport] = []
+
+  public var globals: [String] = []
+
+  public var tables: [String] = []
+
+  public var tags: [String] = []
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct Fuzzilli_Protobuf_RawWasmModule: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var bytes: Data = Data()
+
+  public var metadata: Fuzzilli_Protobuf_WasmModuleMetadata {
+    get {_metadata ?? Fuzzilli_Protobuf_WasmModuleMetadata()}
+    set {_metadata = newValue}
+  }
+  /// Returns true if `metadata` has been explicitly set.
+  public var hasMetadata: Bool {self._metadata != nil}
+  /// Clears the value of `metadata`. Subsequent reads from it will return its default value.
+  public mutating func clearMetadata() {self._metadata = nil}
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _metadata: Fuzzilli_Protobuf_WasmModuleMetadata? = nil
+}
+
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 
 fileprivate let _protobuf_package = "fuzzilli.protobuf"
@@ -6113,6 +6237,10 @@ extension Fuzzilli_Protobuf_WasmAtomicRMWType: SwiftProtobuf._ProtoNameProviding
 
 extension Fuzzilli_Protobuf_WasmAtomicCmpxchgType: SwiftProtobuf._ProtoNameProviding {
   public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0I32_CMPXCHG\0\u{1}I64_CMPXCHG\0\u{1}I32_CMPXCHG_8U\0\u{1}I32_CMPXCHG_16U\0\u{1}I64_CMPXCHG_8U\0\u{1}I64_CMPXCHG_16U\0\u{1}I64_CMPXCHG_32U\0")
+}
+
+extension Fuzzilli_Protobuf_JSType: SwiftProtobuf._ProtoNameProviding {
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0NUMBER\0\u{1}BIGINT\0\u{1}OBJECT\0\u{1}UNDEFINED\0\u{1}ANYTHING\0")
 }
 
 extension Fuzzilli_Protobuf_Parameters: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
@@ -15554,6 +15682,164 @@ extension Fuzzilli_Protobuf_EndBundleScript: SwiftProtobuf.Message, SwiftProtobu
   }
 
   public static func ==(lhs: Fuzzilli_Protobuf_EndBundleScript, rhs: Fuzzilli_Protobuf_EndBundleScript) -> Bool {
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Fuzzilli_Protobuf_JSSignature: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".JSSignature"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}parameterTypes\0\u{1}returnType\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeRepeatedEnumField(value: &self.parameterTypes) }()
+      case 2: try { try decoder.decodeSingularEnumField(value: &self.returnType) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.parameterTypes.isEmpty {
+      try visitor.visitPackedEnumField(value: self.parameterTypes, fieldNumber: 1)
+    }
+    if self.returnType != .number {
+      try visitor.visitSingularEnumField(value: self.returnType, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Fuzzilli_Protobuf_JSSignature, rhs: Fuzzilli_Protobuf_JSSignature) -> Bool {
+    if lhs.parameterTypes != rhs.parameterTypes {return false}
+    if lhs.returnType != rhs.returnType {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Fuzzilli_Protobuf_WasmFunctionExport: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".WasmFunctionExport"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}name\0\u{1}signature\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.name) }()
+      case 2: try { try decoder.decodeSingularMessageField(value: &self._signature) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    if !self.name.isEmpty {
+      try visitor.visitSingularStringField(value: self.name, fieldNumber: 1)
+    }
+    try { if let v = self._signature {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
+    } }()
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Fuzzilli_Protobuf_WasmFunctionExport, rhs: Fuzzilli_Protobuf_WasmFunctionExport) -> Bool {
+    if lhs.name != rhs.name {return false}
+    if lhs._signature != rhs._signature {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Fuzzilli_Protobuf_WasmModuleMetadata: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".WasmModuleMetadata"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}functions\0\u{1}globals\0\u{1}tables\0\u{1}tags\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeRepeatedMessageField(value: &self.functions) }()
+      case 2: try { try decoder.decodeRepeatedStringField(value: &self.globals) }()
+      case 3: try { try decoder.decodeRepeatedStringField(value: &self.tables) }()
+      case 4: try { try decoder.decodeRepeatedStringField(value: &self.tags) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.functions.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.functions, fieldNumber: 1)
+    }
+    if !self.globals.isEmpty {
+      try visitor.visitRepeatedStringField(value: self.globals, fieldNumber: 2)
+    }
+    if !self.tables.isEmpty {
+      try visitor.visitRepeatedStringField(value: self.tables, fieldNumber: 3)
+    }
+    if !self.tags.isEmpty {
+      try visitor.visitRepeatedStringField(value: self.tags, fieldNumber: 4)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Fuzzilli_Protobuf_WasmModuleMetadata, rhs: Fuzzilli_Protobuf_WasmModuleMetadata) -> Bool {
+    if lhs.functions != rhs.functions {return false}
+    if lhs.globals != rhs.globals {return false}
+    if lhs.tables != rhs.tables {return false}
+    if lhs.tags != rhs.tags {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Fuzzilli_Protobuf_RawWasmModule: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".RawWasmModule"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}bytes\0\u{1}metadata\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularBytesField(value: &self.bytes) }()
+      case 2: try { try decoder.decodeSingularMessageField(value: &self._metadata) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    if !self.bytes.isEmpty {
+      try visitor.visitSingularBytesField(value: self.bytes, fieldNumber: 1)
+    }
+    try { if let v = self._metadata {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
+    } }()
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Fuzzilli_Protobuf_RawWasmModule, rhs: Fuzzilli_Protobuf_RawWasmModule) -> Bool {
+    if lhs.bytes != rhs.bytes {return false}
+    if lhs._metadata != rhs._metadata {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

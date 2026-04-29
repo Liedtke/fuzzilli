@@ -2954,3 +2954,44 @@ final class Fixup: JsInternalOperation {
         super.init(numInputs: numArguments, numOutputs: hasOutput ? 1 : 0)
     }
 }
+
+public struct WasmModuleMetadata: Hashable {
+    public struct FunctionExport: Hashable {
+        public let name: String
+        public let signature: Signature
+        public init(name: String, signature: Signature) {
+            self.name = name
+            self.signature = signature
+        }
+    }
+
+    public let functions: [FunctionExport]
+    public let globals: [String]
+    public let tables: [String]
+    public let tags: [String]
+
+    public init(
+        functions: [FunctionExport] = [], globals: [String] = [], tables: [String] = [],
+        tags: [String] = []
+    ) {
+        self.functions = functions
+        self.globals = globals
+        self.tables = tables
+        self.tags = tags
+    }
+}
+
+final class RawWasmModule: JsOperation {
+    override var opcode: Opcode { .rawWasmModule(self) }
+
+    let bytes: [UInt8]
+    let metadata: WasmModuleMetadata
+
+    init(bytes: [UInt8], metadata: WasmModuleMetadata = WasmModuleMetadata()) {
+        // TODO: Consider validating that bytes represent a valid Wasm module (starts with \0asm)
+        assert(!bytes.isEmpty, "Wasm module bytes should not be empty")
+        self.bytes = bytes
+        self.metadata = metadata
+        super.init(numOutputs: 1, requiredContext: [.javascript])
+    }
+}

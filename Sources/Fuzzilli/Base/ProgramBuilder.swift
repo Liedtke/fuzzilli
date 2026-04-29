@@ -5964,6 +5964,13 @@ public class ProgramBuilder {
     }
 
     @discardableResult
+    public func rawWasmModule(bytes: [UInt8], metadata: WasmModuleMetadata = WasmModuleMetadata())
+        -> Variable
+    {
+        return emit(RawWasmModule(bytes: bytes, metadata: metadata)).output
+    }
+
+    @discardableResult
     public func buildWasmModule(_ body: (WasmModule) -> Void) -> WasmModule {
         emit(BeginWasmModule())
         let module = self.currentWasmModule

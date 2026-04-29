@@ -2284,4 +2284,47 @@ class JSTyperTests: XCTestCase {
         XCTAssertFalse(b.type(of: v2).isEnumeration)
         XCTAssert(b.type(of: v2).Is(.integer))
     }
+
+    func testRawWasmModuleTyping() {
+        let fuzzer = makeMockFuzzer()
+        let b = fuzzer.makeBuilder()
+
+        let bytes: [UInt8] = [0x00, 0x61, 0x73, 0x6D, 0x01, 0x00, 0x00, 0x00]
+        let metadata = WasmModuleMetadata(
+            functions: [
+                WasmModuleMetadata.FunctionExport(
+                    name: "foo", signature: Signature(expects: [.plain(.integer)], returns: .float)),
+                WasmModuleMetadata.FunctionExport(
+                    name: "bar", signature: Signature(expects: [], returns: .undefined)),
+            ],
+            globals: ["g1"],
+            tables: ["t1"],
+            tags: ["tag1"]
+        )
+
+        let module = b.rawWasmModule(bytes: bytes, metadata: metadata)
+        let exports = b.getProperty("exports", of: module)
+        let exportsType = b.type(of: exports)
+
+        XCTAssertTrue(exportsType.methods.contains("foo"))
+        XCTAssertTrue(exportsType.methods.contains("bar"))
+        XCTAssertTrue(exportsType.properties.contains("g1"))
+        XCTAssertTrue(exportsType.properties.contains("t1"))
+        XCTAssertTrue(exportsType.properties.contains("tag1"))
+
+        let foo = b.getProperty("foo", of: exports)
+        XCTAssertTrue(
+            b.type(of: foo).Is(.function(Signature(expects: [.plain(.integer)], returns: .float))))
+
+        let g1 = b.getProperty("g1", of: exports)
+        let g1Type = b.type(of: g1)
+        XCTAssertTrue(g1Type.properties.contains("value"))
+        XCTAssertTrue(g1Type.methods.contains("valueOf"))
+
+        let t1 = b.getProperty("t1", of: exports)
+        let t1Type = b.type(of: t1)
+        XCTAssertTrue(t1Type.methods.contains("grow"))
+        XCTAssertTrue(t1Type.methods.contains("get"))
+        XCTAssertTrue(t1Type.methods.contains("set"))
+    }
 }

@@ -362,6 +362,7 @@ message Instruction {
         BeginBundleScript beginBundleScript = 336;
         EndBundleScript endBundleScript = 337;
         BlockBreak blockBreak = 338;
+        RawWasmModule rawWasmModule = 339;
     }
 }
 
