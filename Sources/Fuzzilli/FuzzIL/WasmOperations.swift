@@ -1279,7 +1279,7 @@ final class WasmEndBlock: WasmOperation {
     init(outputCount: Int) {
         super.init(
             numInputs: 1 + outputCount, numOutputs: outputCount,
-            attributes: [.isBlockEnd, .resumesSurroundingContext], requiredContext: [.wasmFunction])
+            attributes: [.isBlockEnd], requiredContext: [.wasmFunction])
     }
 }
 
@@ -1367,7 +1367,7 @@ final class WasmEndLoop: WasmOperation {
         // Inputs: the signature + the outputs of the loop.
         super.init(
             numInputs: 1 + outputCount, numOutputs: outputCount,
-            attributes: [.isBlockEnd, .resumesSurroundingContext], requiredContext: [.wasmFunction])
+            attributes: [.isBlockEnd], requiredContext: [.wasmFunction])
     }
 }
 
@@ -1404,7 +1404,7 @@ final class WasmEndTryTable: WasmOperation {
     init(outputCount: Int) {
         super.init(
             numInputs: 1 + outputCount, numOutputs: outputCount,
-            attributes: [.isBlockEnd, .resumesSurroundingContext], requiredContext: [.wasmFunction])
+            attributes: [.isBlockEnd], requiredContext: [.wasmFunction])
     }
 }
 
@@ -1503,7 +1503,7 @@ final class WasmEndTryDelegate: WasmOperation {
         // try block.
         super.init(
             numInputs: 2 + outputCount, numOutputs: outputCount,
-            attributes: [.isBlockEnd, .resumesSurroundingContext], requiredContext: [.wasmFunction])
+            attributes: [.isBlockEnd], requiredContext: [.wasmFunction])
     }
 }
 

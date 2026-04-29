@@ -66,6 +66,13 @@ public class Operation {
         assert(attributes.contains(.isVariadic) == (firstVariadicInput != -1))
         assert(firstVariadicInput == -1 || firstVariadicInput <= numInputs)
         assert(contextOpened == .empty || attributes.contains(.isBlockStart))
+        assert(
+            attributes.contains(.isBlockStart) || !attributes.contains(.resumesSurroundingContext),
+            ".resumesSurroundingContext is an attribute for .isBlockStart")
+        assert(
+            attributes.contains(.isBlockStart)
+                || !attributes.contains(.propagatesSurroundingContext),
+            ".propagatesSurroundingContext is an attribute for .isBlockStart")
         self.attributes = attributes
         self.requiredContext = requiredContext
         self.contextOpened = contextOpened
