@@ -64,7 +64,7 @@ public class ExplorationMutator: RuntimeAssistedMutator {
             b.append(instr)
 
             // Since we need additional arguments for Explore, only explore when we have a couple of visible variables.
-            guard b.numberOfVisibleVariables > 3 else { continue }
+            guard b.numberOfVisibleJsVariables > 3 else { continue }
 
             // TODO: we currently don't want to explore anything in the wasm world.
             // We might want to change this to explore the functions that the Wasm module emits.

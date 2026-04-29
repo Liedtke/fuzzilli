@@ -174,7 +174,7 @@ public class ProgramBuilder {
         return numberOfVisibleVariables > 0
     }
 
-    public var hasVisibleJsVariables: Bool {
+    public var numberOfVisibleJsVariables: Int {
         let jsVarCount = variablesInScope.filter({
             type(of: $0).Is(.jsAnything)
         }).count
@@ -182,7 +182,11 @@ public class ProgramBuilder {
             type(of: $0).Is(.jsAnything)
         }).count
 
-        return jsVarCount > hiddenJsVarCount
+        return jsVarCount - hiddenJsVarCount
+    }
+
+    public var hasVisibleJsVariables: Bool {
+        return numberOfVisibleJsVariables > 0
     }
 
     /// All currently visible variables.
@@ -605,7 +609,7 @@ public class ProgramBuilder {
             assert(requestedN >= 0)
             n = requestedN
         } else {
-            switch numberOfVisibleVariables {
+            switch numberOfVisibleJsVariables {
             case 0...1:
                 n = 0
             case 2...5:
