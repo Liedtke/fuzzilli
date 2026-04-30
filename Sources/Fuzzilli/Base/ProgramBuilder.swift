@@ -861,6 +861,13 @@ public class ProgramBuilder {
                     return self.randomVariable(ofType: .wasmTypeDef())!
                 },
             .object():
+                // There may potentially be multiple valid sources whence .object types can be
+                // generated. The prioritization order for these sources is:
+                // 1. Registered producing generators for the type (selected according to their probability)
+                // 2. Custom CodeGenerators that are declared to produce this type (selected with high probability)
+                // 3. Global properties (selected with high probability)
+                // 4. Any other methods or properties that return this type
+                // 5. Fallback: creating an object and adding properties directly
                 {
                     func useMethodToProduce(_ method: (group: String, method: String)) -> Variable {
                         let group = self.fuzzer.environment.type(ofGroup: method.group)
@@ -923,6 +930,26 @@ public class ProgramBuilder {
                         }
                     }
 
+                    let generators = self.fuzzer.codeGenerators.filter({
+                        // Right now only use generators that require a single context.
+                        $0.parts.last!.requiredContext.isSingle
+                            && $0.parts.last!.requiredContext.satisfied(by: self.context)
+                            && $0.parts.last!.produces.contains(where: { produces in
+                                produces.type.Is(type)
+                            })
+                    })
+                    // If there is a CodeGenerator marked as producing this type, use it with high probability.
+                    if generators.count > 0 && probability(0.75) {
+                        let generator = generators.randomElement()
+                        let _ = self.complete(generator: generator, withBudget: 10)
+                        guard let variable = self.randomVariable(ofTypeOrSubtype: type) else {
+                            fatalError(
+                                "The generator \(generator.name) is supposed to generate type "
+                                    + "\(type). Either the generator or its annotation is wrong.")
+                        }
+                        return variable
+                    }
+
                     let producingMethods = self.fuzzer.environment.getProducingMethods(ofType: type)
                     let producingProperties = self.fuzzer.environment.getProducingProperties(
                         ofType: type)
@@ -950,24 +977,6 @@ public class ProgramBuilder {
                         return useMethodToProduce(method)
                     } else if let property = maybeProperty {
                         return usePropertyToProduce(property)
-                    }
-                    let generators = self.fuzzer.codeGenerators.filter({
-                        // Right now only use generators that require a single context.
-                        $0.parts.last!.requiredContext.isSingle
-                            && $0.parts.last!.requiredContext.satisfied(by: self.context)
-                            && $0.parts.last!.produces.contains(where: { produces in
-                                produces.type.Is(type)
-                            })
-                    })
-                    if generators.count > 0 {
-                        let generator = generators.randomElement()
-                        let _ = self.complete(generator: generator, withBudget: 10)
-                        guard let variable = self.randomVariable(ofTypeOrSubtype: type) else {
-                            fatalError(
-                                "The generator \(generator.name) is supposed to generate type "
-                                    + "\(type). Either the generator or its annotation is wrong.")
-                        }
-                        return variable
                     }
                     // Otherwise this is one of the following:
                     // 1. an object with more type information, i.e. it has a group, but no associated builtin, e.g. we cannot construct it with new.
