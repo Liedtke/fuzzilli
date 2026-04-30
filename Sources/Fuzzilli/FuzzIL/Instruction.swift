@@ -1204,6 +1204,26 @@ extension Instruction: ProtobufConvertible {
                 $0.beginBundleScript = Fuzzilli_Protobuf_BeginBundleScript()
             case .endBundleScript:
                 $0.endBundleScript = Fuzzilli_Protobuf_EndBundleScript()
+            case .beginBundleModule(let op):
+                $0.beginBundleModule = Fuzzilli_Protobuf_BeginBundleModule.with {
+                    $0.moduleName = op.moduleName
+                }
+            case .endBundleModule(let op):
+                $0.endBundleModule = Fuzzilli_Protobuf_EndBundleModule.with {
+                    $0.moduleName = op.moduleName
+                }
+            case .beginBundleModuleEntryPoint:
+                $0.beginBundleModuleEntryPoint = Fuzzilli_Protobuf_BeginBundleModuleEntryPoint()
+            case .endBundleModuleEntryPoint:
+                $0.endBundleModuleEntryPoint = Fuzzilli_Protobuf_EndBundleModuleEntryPoint()
+            case .exportVariables(let op):
+                $0.exportVariables = Fuzzilli_Protobuf_ExportVariables.with {
+                    $0.exportNames = op.exportNames
+                }
+            case .importVariables(let op):
+                $0.importVariables = Fuzzilli_Protobuf_ImportVariables.with {
+                    $0.importNames = op.importNames
+                }
             case .print(_):
                 fatalError("Print operations should not be serialized")
             // Wasm Operations
@@ -2415,6 +2435,18 @@ extension Instruction: ProtobufConvertible {
             op = BeginBundleScript()
         case .endBundleScript:
             op = EndBundleScript()
+        case .beginBundleModule(let p):
+            op = BeginBundleModule(moduleName: p.moduleName)
+        case .endBundleModule(let p):
+            op = EndBundleModule(moduleName: p.moduleName)
+        case .beginBundleModuleEntryPoint:
+            op = BeginBundleModuleEntryPoint()
+        case .endBundleModuleEntryPoint:
+            op = EndBundleModuleEntryPoint()
+        case .exportVariables(let p):
+            op = ExportVariables(exportNames: p.exportNames)
+        case .importVariables(let p):
+            op = ImportVariables(importNames: p.importNames)
         case .loadNewTarget:
             op = LoadNewTarget()
         case .nop:

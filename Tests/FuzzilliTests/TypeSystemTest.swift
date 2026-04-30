@@ -599,6 +599,71 @@ class TypeSystemTests: XCTestCase {
         XCTAssertFalse(bObj == aObj || bObj >= aObj || aObj >= bObj)
     }
 
+    func testJsModuleSubsumption() {
+        let emptyModule = ILType.jsModule()
+        let module1 = ILType.jsModule(exports: ["a": .object(), "b": .integer])
+        let module2 = ILType.jsModule(exports: ["a": .object()])
+        let module3 = ILType.jsModule(exports: ["a": .object(withProperties: ["p"]), "b": .integer])
+
+        XCTAssertTrue(emptyModule.subsumes(module1))
+        XCTAssertFalse(module1.subsumes(emptyModule))
+
+        XCTAssertTrue(module2.subsumes(module1))
+        XCTAssertFalse(module1.subsumes(module2))
+
+        XCTAssertTrue(module1.subsumes(module3))
+        XCTAssertFalse(module3.subsumes(module1))
+
+        XCTAssertTrue(module2.subsumes(module3))
+        XCTAssertFalse(module3.subsumes(module2))
+    }
+
+    func testJsModuleUnion() {
+        let module1 = ILType.jsModule(exports: ["a": .object(), "b": .integer])
+        let module2 = ILType.jsModule(exports: ["a": .object()])
+        let module3 = ILType.jsModule(exports: ["a": .object(withProperties: ["p"]), "b": .integer])
+
+        let module1Or2 = module1 | module2
+        XCTAssertNotNil(module1Or2.exports["a"])
+        XCTAssertEqual(.object(), module1Or2.exports["a"])
+        XCTAssertNil(module1Or2.exports["b"])
+
+        let module1Or3 = module1 | module3
+        XCTAssertNotNil(module1Or3.exports["a"])
+        XCTAssertEqual(.object(), module1Or3.exports["a"])
+        XCTAssertNotNil(module1Or3.exports["b"])
+        XCTAssertEqual(.integer, module1Or3.exports["b"])
+
+        let module2Or3 = module2 | module3
+        XCTAssertNotNil(module2Or3.exports["a"])
+        XCTAssertEqual(.object(), module2Or3.exports["a"])
+        XCTAssertNil(module2Or3.exports["b"])
+    }
+
+    func testJsModuleIntersection() {
+        let module1 = ILType.jsModule(exports: ["a": .object(), "b": .integer])
+        let module2 = ILType.jsModule(exports: ["a": .object()])
+        let module3 = ILType.jsModule(exports: ["a": .object(withProperties: ["p"]), "b": .integer])
+
+        let module1And2 = module1 & module2
+        XCTAssertNotNil(module1And2.exports["a"])
+        XCTAssertEqual(.object(), module1And2.exports["a"])
+        XCTAssertNotNil(module1And2.exports["b"])
+        XCTAssertEqual(.integer, module1And2.exports["b"])
+
+        let module1And3 = module1 & module3
+        XCTAssertNotNil(module1And3.exports["a"])
+        XCTAssertEqual(.object(withProperties: ["p"]), module1And3.exports["a"])
+        XCTAssertNotNil(module1And3.exports["b"])
+        XCTAssertEqual(.integer, module1And3.exports["b"])
+
+        let module2And3 = module2 & module3
+        XCTAssertNotNil(module2And3.exports["a"])
+        XCTAssertEqual(.object(withProperties: ["p"]), module2And3.exports["a"])
+        XCTAssertNotNil(module2And3.exports["b"])
+        XCTAssertEqual(.integer, module2And3.exports["b"])
+    }
+
     func testWasmGlobalSubsumption() {
         let wasmi32Mutable = WasmGlobalType(valueType: ILType.wasmi32, isMutable: true)
         let wasmi32NonMutable = WasmGlobalType(valueType: ILType.wasmi32, isMutable: false)

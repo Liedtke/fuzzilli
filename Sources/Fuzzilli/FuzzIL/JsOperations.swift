@@ -2998,3 +2998,68 @@ final class RawWasmModule: JsOperation {
         super.init(numOutputs: 1, requiredContext: [.javascript])
     }
 }
+
+final class BeginBundleModule: JsOperation {
+    override var opcode: Opcode { .beginBundleModule(self) }
+    let moduleName: String
+
+    init(moduleName: String) {
+        self.moduleName = moduleName
+        super.init(
+            attributes: .isBlockStart, requiredContext: [.bundle],
+            contextOpened: [.moduleTopLevel, .javascript])
+    }
+}
+
+// The output will be the module.
+final class EndBundleModule: JsOperation {
+    override var opcode: Opcode { .endBundleModule(self) }
+    let moduleName: String
+
+    init(moduleName: String) {
+        self.moduleName = moduleName
+        super.init(numOutputs: 1, attributes: .isBlockEnd, requiredContext: .moduleTopLevel)
+    }
+}
+
+final class ExportVariables: JsOperation {
+    override var opcode: Opcode { .exportVariables(self) }
+    let exportNames: [String]
+
+    init(exportNames: [String]) {
+        self.exportNames = exportNames
+        super.init(
+            numInputs: exportNames.count, firstVariadicInput: 0, attributes: .isVariadic,
+            requiredContext: .moduleTopLevel)
+    }
+}
+
+final class ImportVariables: JsOperation {
+    override var opcode: Opcode { .importVariables(self) }
+    let importNames: [String]
+
+    init(importNames: [String]) {
+        self.importNames = importNames
+        super.init(
+            numInputs: 1, numOutputs: importNames.count, attributes: [.isNotInputMutable],
+            requiredContext: .moduleTopLevel)
+    }
+}
+
+final class BeginBundleModuleEntryPoint: JsOperation {
+    override var opcode: Opcode { .beginBundleModuleEntryPoint(self) }
+
+    init() {
+        super.init(
+            attributes: .isBlockStart, requiredContext: [.bundle],
+            contextOpened: [.moduleTopLevel, .javascript])
+    }
+}
+
+final class EndBundleModuleEntryPoint: JsOperation {
+    override var opcode: Opcode { .endBundleModuleEntryPoint(self) }
+
+    init() {
+        super.init(attributes: .isBlockEnd, requiredContext: .moduleTopLevel)
+    }
+}

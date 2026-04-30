@@ -31,6 +31,7 @@ public struct Context: OptionSet, Hashable, CaseIterable {
         .wasmTypeGroup,
         .empty,
         .bundle,
+        .moduleTopLevel,
     ]
 
     public let rawValue: UInt32
@@ -76,6 +77,8 @@ public struct Context: OptionSet, Hashable, CaseIterable {
     public static let bundle = Context(rawValue: 1 << 14)
     // Inside a block statement.
     public static let blockStatement = Context(rawValue: 1 << 15)
+    // Inside a module top context. This context is set only at the top level of the module, and is not propagated to scopes (functions, blocks etc) deeper in the module.
+    public static let moduleTopLevel = Context(rawValue: 1 << 16)
 
     public static let empty = Context([])
 
@@ -122,6 +125,9 @@ extension Context: CustomStringConvertible {
         }
         if self.contains(.bundle) {
             strings.append(".bundle")
+        }
+        if self.contains(.moduleTopLevel) {
+            strings.append(".moduleTopLevel")
         }
         if self.contains(.wasm) {
             strings.append(".wasm")

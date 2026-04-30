@@ -131,6 +131,8 @@ public class ProgramBuilder {
         return activeWasmModule!.functions.last!
     }
 
+    private var activeJsModuleName: String? = nil
+
     /// Stack of active class definitions.
     ///
     /// Similar to object literals, class definitions can be nested so this needs to be a stack.
@@ -4157,6 +4159,63 @@ public class ProgramBuilder {
 
     public func buildBlockStatement(_ body: () -> Void) {
         buildBlockStatement { _ in body() }
+    }
+
+    public func beginBundleModule(name: String) {
+        activeJsModuleName = name
+        emit(BeginBundleModule(moduleName: name))
+    }
+
+    public func endBundleModule() -> Variable {
+        let endModuleInstruction = emit(EndBundleModule(moduleName: activeJsModuleName!))
+        activeJsModuleName = nil
+        return endModuleInstruction.output
+    }
+
+    public func beginBundleModuleEntryPoint() {
+        emit(BeginBundleModuleEntryPoint())
+    }
+
+    public func endBundleModuleEntryPoint() {
+        emit(EndBundleModuleEntryPoint())
+    }
+
+    public func generateExport() {
+        guard hasVisibleJsVariables else { return }
+
+        let numExports = Int.random(in: 1...5)
+        var varsToExport: [Variable] = []
+        var exportNames: [String] = []
+        for i in 0..<numExports {
+            varsToExport.append(randomJsVariable())
+            // TODO(marja): These names are not guaranteed to be unique. Figure out
+            // a better naming solution.
+            exportNames.append("export\(indexOfNextInstruction())_\(i)")
+        }
+        exportVariables(variables: varsToExport, exportNames: exportNames)
+    }
+
+    public func generateImport() {
+        // TODO(marja): Reassigning to imported variables is not allowed in JavaScript -> make Fuzzilli not reassign.
+        if let module = findVariable(satisfying: {
+            type(of: $0).Is(.jsModule()) && !type(of: $0).exports.isEmpty
+        }) {
+            let exports = type(of: module).exports
+            let numImports = Int.random(in: 1...exports.count)
+            let variableNames = (0..<numImports).map { _ in
+                exports.randomElement()!.key
+            }
+            _ = importVariables(module: module, importNames: variableNames)
+        }
+    }
+
+    public func exportVariables(variables: [Variable], exportNames: [String]) {
+        assert(variables.count == exportNames.count)
+        emit(ExportVariables(exportNames: exportNames), withInputs: variables)
+    }
+
+    public func importVariables(module: Variable, importNames: [String]) -> Instruction {
+        return emit(ImportVariables(importNames: importNames), withInputs: [module])
     }
 
     public func blockBreak(_ label: Variable) {

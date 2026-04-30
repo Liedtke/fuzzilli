@@ -238,8 +238,11 @@ public let codeGeneratorWeights = [
     "WasmLegacyTryCatchComplexGenerator":       5,
 
     // For generating bundles
-    // TODO(marja): Add modules.
     "BundleScriptGenerator":                    1,
+    "BundleModuleGenerator":                    5,
+    "BundleModuleEntryPointGenerator":          5,
+    "ModuleImportGenerator":                    20,
+    "ModuleExportGenerator":                    20,
 
     //
     // Wasm generators

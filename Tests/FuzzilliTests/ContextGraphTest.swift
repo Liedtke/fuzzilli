@@ -32,6 +32,7 @@ class ContextGraphTests: XCTestCase {
         expectedReachedContexts.remove(.empty)
         // Only reachable in the "bundle" configuration.
         expectedReachedContexts.remove(.bundle)
+        expectedReachedContexts.remove(.moduleTopLevel)
         XCTAssertEqual(reachableContexts, expectedReachedContexts)
     }
 

@@ -297,6 +297,14 @@ public struct ILType: Hashable {
                 wasmExt: WasmFunctionDefinition(signatureType)))
     }
 
+    public static func jsModule(exports: [String: ILType] = [:]) -> ILType {
+        return ILType(
+            definiteType: .jsModule,
+            ext: TypeExtension(
+                properties: Set(), methods: Set(), signature: nil,
+                exports: exports))
+    }
+
     //
     // Wasm Types
     //
@@ -561,6 +569,17 @@ public struct ILType: Hashable {
             return false
         }
 
+        let selfExports = self.ext?.exports ?? [:]
+        let otherExports = other.ext?.exports ?? [:]
+        for (name, type) in selfExports {
+            guard let otherType = otherExports[name] else {
+                return false
+            }
+            guard type.subsumes(otherType) else {
+                return false
+            }
+        }
+
         return true
     }
 
@@ -643,6 +662,10 @@ public struct ILType: Hashable {
 
     public var iterableElementType: ILType? {
         return ext?.iterableElementType
+    }
+
+    public var exports: [String: ILType] {
+        return ext?.exports ?? [:]
     }
 
     public var hasWasmTypeInfo: Bool {
@@ -868,12 +891,22 @@ public struct ILType: Hashable {
             other.iterableElementType != nil
             ? self.iterableElementType?.union(with: other.iterableElementType!) : nil
 
+        var commonExports: [String: ILType] = [:]
+        let selfExports = self.ext?.exports ?? [:]
+        let otherExports = other.ext?.exports ?? [:]
+        for (name, type) in selfExports {
+            if let otherType = otherExports[name] {
+                commonExports[name] = type.union(with: otherType)
+            }
+        }
+
         return ILType(
             definiteType: definiteType, possibleType: possibleType,
             ext: TypeExtension(
                 group: group, properties: commonProperties, methods: commonMethods,
                 signature: signature, wasmExt: wasmExt, receiver: receiver,
-                isEnumeration: isEnumeration, iterableElementType: iterableElementType))
+                isEnumeration: isEnumeration, iterableElementType: iterableElementType,
+                exports: commonExports))
     }
 
     public static func | (lhs: ILType, rhs: ILType) -> ILType {
@@ -983,12 +1016,26 @@ public struct ILType: Hashable {
             iterableElementType = self.iterableElementType ?? other.iterableElementType
         }
 
+        var commonExports: [String: ILType] = [:]
+        let selfExports = self.ext?.exports ?? [:]
+        let otherExports = other.ext?.exports ?? [:]
+        for (name, type) in selfExports {
+            if let otherType = otherExports[name] {
+                commonExports[name] = type.intersection(with: otherType)
+            } else {
+                commonExports[name] = type
+            }
+        }
+        for (name, type) in otherExports where commonExports[name] == nil {
+            commonExports[name] = type
+        }
+
         return ILType(
             definiteType: definiteType, possibleType: possibleType,
             ext: TypeExtension(
                 group: group, properties: properties, methods: methods, signature: signature,
                 wasmExt: wasmExt, receiver: receiver, isEnumeration: isEnumeration,
-                iterableElementType: iterableElementType))
+                iterableElementType: iterableElementType, exports: commonExports))
     }
 
     public static func & (lhs: ILType, rhs: ILType) -> ILType {
@@ -1346,6 +1393,19 @@ extension ILType: CustomStringConvertible {
             return ".wasmDataSegment"
         case .wasmElementSegment:
             return ".wasmElementSegment"
+        case .jsModule:
+            let exports = self.ext?.exports ?? [:]
+            if abbreviate && exports.count > 5 {
+                let selection = exports.prefix(3).map {
+                    "\($0.key): \($0.value.format(abbreviate: abbreviate))"
+                }
+                return ".jsModule(exports: [\(selection.joined(separator: ", ")), ...])"
+            } else {
+                let formattedExports = exports.map {
+                    "\($0.key): \($0.value.format(abbreviate: abbreviate))"
+                }.joined(separator: ", ")
+                return ".jsModule(exports: [\(formattedExports)])"
+            }
         default:
             break
         }
@@ -1429,6 +1489,8 @@ struct BaseType: OptionSet, Hashable {
     // A label for a block, as a target for break.
     static let jsBlockLabel = BaseType(rawValue: 1 << 27)
 
+    static let jsModule = BaseType(rawValue: 1 << 28)
+
     static let jsAnything = BaseType([
         .undefined, .integer, .float, .string, .boolean, .object, .function, .constructor,
         .unboundFunction, .bigint, .regexp, .iterable,
@@ -1443,6 +1505,7 @@ struct BaseType: OptionSet, Hashable {
         .undefined, .integer, .float, .string, .boolean, .object, .function, .constructor,
         .unboundFunction, .bigint, .regexp, .iterable, .wasmf32, .wasmi32, .wasmf64, .wasmi64,
         .wasmRef, .wasmSimd128, .wasmTypeDef, .wasmFunctionDef, .jsLoopLabel, .jsBlockLabel,
+        .jsModule,
     ]
 }
 
@@ -1472,14 +1535,17 @@ class TypeExtension: Hashable {
     // Note: this is an assumption at generation time, and the array's contents may be mutated arbitrarily
     let iterableElementType: ILType?
 
+    // Exports (name -> type). Will only be populated if isJsModule is true.
+    let exports: [String: ILType]
+
     init?(
         group: String? = nil, properties: Set<String>, methods: Set<String>, signature: Signature?,
         wasmExt: WasmTypeExtension? = nil, receiver: ILType? = nil, isEnumeration: Bool = false,
-        iterableElementType: ILType? = nil
+        iterableElementType: ILType? = nil, exports: [String: ILType] = [:]
     ) {
         if group == nil && properties.isEmpty && methods.isEmpty && signature == nil
             && wasmExt == nil && receiver == nil && isEnumeration == false
-            && iterableElementType == nil
+            && iterableElementType == nil && exports.isEmpty
         {
             return nil
         }
@@ -1492,6 +1558,7 @@ class TypeExtension: Hashable {
         self.receiver = receiver
         self.isEnumeration = isEnumeration
         self.iterableElementType = iterableElementType
+        self.exports = exports
     }
 
     static func == (lhs: TypeExtension, rhs: TypeExtension) -> Bool {
@@ -1503,6 +1570,7 @@ class TypeExtension: Hashable {
             && lhs.receiver == rhs.receiver
             && lhs.isEnumeration == rhs.isEnumeration
             && lhs.iterableElementType == rhs.iterableElementType
+            && lhs.exports == rhs.exports
     }
 
     public func hash(into hasher: inout Hasher) {
@@ -1514,6 +1582,7 @@ class TypeExtension: Hashable {
         hasher.combine(receiver)
         hasher.combine(isEnumeration)
         hasher.combine(iterableElementType)
+        hasher.combine(exports)
     }
 }
 

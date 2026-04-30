@@ -94,6 +94,9 @@ struct VariadicInputReducer: Reducer {
                     // inputs) is done by the WasmTypeGroupReducer (as it requires further tracking
                     // e.g. of output usages.)
                     break loop
+                case .exportVariables(_):
+                    // TODO(marja): Implement
+                    break loop
                 default:
                     fatalError("Unknown variadic operation \(instr.op)")
                 }

@@ -363,6 +363,12 @@ message Instruction {
         EndBundleScript endBundleScript = 337;
         BlockBreak blockBreak = 338;
         RawWasmModule rawWasmModule = 339;
+        BeginBundleModule beginBundleModule = 340;
+        EndBundleModule endBundleModule = 341;
+        ExportVariables exportVariables = 342;
+        ImportVariables importVariables = 343;
+        BeginBundleModuleEntryPoint beginBundleModuleEntryPoint = 344;
+        EndBundleModuleEntryPoint endBundleModuleEntryPoint = 345;
     }
 }
 

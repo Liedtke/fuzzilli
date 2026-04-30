@@ -32,7 +32,7 @@ public class GenerativeEngine: FuzzEngine {
 
         if generateBundle {
             // Increase the budget so that we are more likely to generate more items inside a bundle.
-            numInstructionsToGenerate = 50
+            numInstructionsToGenerate = 100
         }
 
         // Start by building a prefix that creates some variables (of known types) that the following CodeGenerators can then make use of.

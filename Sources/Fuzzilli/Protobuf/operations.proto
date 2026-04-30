@@ -1705,3 +1705,25 @@ message RawWasmModule {
   bytes bytes = 1;
   WasmModuleMetadata metadata = 2;
 }
+
+message BeginBundleModule {
+    string moduleName = 1;
+}
+
+message EndBundleModule {
+    string moduleName = 1;
+}
+
+message ExportVariables {
+    repeated string exportNames = 1;
+}
+
+message ImportVariables {
+    repeated string importNames = 1;
+}
+
+message BeginBundleModuleEntryPoint {
+}
+
+message EndBundleModuleEntryPoint {
+}

@@ -833,6 +833,35 @@ public class FuzzILLifter: Lifter {
             w.decreaseIndentionLevel()
             w.emit("EndBundleScript")
 
+        case .beginBundleModule(let op):
+            w.emit("BeginBundleModule '\(op.moduleName)'")
+            w.increaseIndentionLevel()
+
+        case .endBundleModule(let op):
+            w.decreaseIndentionLevel()
+            w.emit("\(output()) <- EndBundleModule '\(op.moduleName)'")
+
+        case .beginBundleModuleEntryPoint:
+            w.emit("BeginBundleModuleEntryPoint")
+            w.increaseIndentionLevel()
+
+        case .endBundleModuleEntryPoint:
+            w.decreaseIndentionLevel()
+            w.emit("EndBundleModuleEntryPoint")
+
+        case .exportVariables(let op):
+            assert(op.exportNames.count == instr.numInputs)
+            let exportSpecs = op.exportNames.enumerated().map { (i, name) in
+                "\(lift(instr.inputs[i])) as \(name)"
+            }
+            let specsStr = exportSpecs.joined(separator: ", ")
+            w.emit("ExportVariables [\(specsStr)]")
+
+        case .importVariables(let op):
+            let outputs = instr.outputs.map(lift).joined(separator: ", ")
+            let names = op.importNames.joined(separator: ", ")
+            w.emit("\(outputs) <- ImportVariables \(input(0)), [\(names)]")
+
         case .loadNewTarget:
             w.emit("\(output()) <- LoadNewTarget")
 

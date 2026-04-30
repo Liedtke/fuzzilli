@@ -91,7 +91,9 @@ struct BlockReducer: Reducer {
                 .beginWasmModule,
                 .wasmBeginTryDelegate,
                 .wasmBeginTryTable,
-                .beginBundleScript:
+                .beginBundleScript,
+                .beginBundleModule,
+                .beginBundleModuleEntryPoint:
                 reduceGenericBlockGroup(group, with: helper)
 
             case .wasmBeginBlock,

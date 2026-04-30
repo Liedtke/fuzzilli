@@ -447,6 +447,31 @@ class LifterTests: XCTestCase {
         XCTAssertEqual(actual, expected)
     }
 
+    func testExportBuiltinInlining() {
+        let config = Configuration(generateBundle: true)
+        let fuzzer = makeMockFuzzer(config: config)
+        let b = fuzzer.makeBuilder()
+
+        b.beginBundleModule(name: "module.mjs")
+        let date = b.createNamedVariable(forBuiltin: "Date")
+        b.exportVariables(variables: [date], exportNames: ["foo"])
+        let module = b.endBundleModule()
+        XCTAssertTrue(
+            b.type(of: module).Is(.jsModule(exports: ["foo": .object(ofGroup: "DateConstructor")])))
+
+        let program = b.finalize()
+        let actual = fuzzer.lifter.lift(program)
+
+        let expected = """
+            // JS_BUNDLE_MODULE:module.mjs
+            const v0 = Date;
+            export { v0 as foo };
+
+            """
+
+        XCTAssertEqual(actual, expected)
+    }
+
     func testForceVariableDefinitions() {
         let createProgram = { (config: Configuration) in
             let fuzzer = makeMockFuzzer(config: config)
@@ -4617,6 +4642,51 @@ class LifterTests: XCTestCase {
             const v0 = new WebAssembly.Instance(new WebAssembly.Module(new Uint8Array([
                 0x00, 0x61, 0x73, 0x6D, 0x01, 0x00, 0x00, 0x00,
             ])));
+
+            """
+
+        XCTAssertEqual(actual, expected)
+    }
+
+    func testBundleModules() {
+        let config = Configuration(generateBundle: true)
+        let fuzzer = makeMockFuzzer(config: config)
+        let b = fuzzer.makeBuilder()
+
+        b.beginBundleModule(name: "module.mjs")
+        let v1 = b.loadInt(42)
+        let v2 = b.loadString("foo")
+
+        b.exportVariables(variables: [v1, v2], exportNames: ["ex1", "ex2"])
+        let moduleVariable = b.endBundleModule()
+        let moduleVariableType = b.type(of: moduleVariable)
+        let exports = moduleVariableType.exports
+
+        XCTAssertTrue(exports["ex1"]!.Is(.integer))
+        XCTAssertTrue(exports["ex2"]!.Is(.string))
+
+        b.beginBundleModuleEntryPoint()
+        let importInstruction = b.importVariables(
+            module: moduleVariable, importNames: ["ex1", "ex2"])
+        let imported = Array(importInstruction.outputs)
+
+        XCTAssertEqual(imported.count, 2)
+        XCTAssertTrue(b.type(of: imported[0]).Is(.integer))
+        XCTAssertTrue(b.type(of: imported[1]).Is(.string))
+        b.binary(imported[0], imported[1], with: .Add)
+        b.endBundleModuleEntryPoint()
+
+        let program = b.finalize()
+        let actual = fuzzer.lifter.lift(program)
+
+        let expected = """
+            // JS_BUNDLE_MODULE:module.mjs
+            const v0 = 42;
+            const v1 = "foo";
+            export { v0 as ex1, v1 as ex2 };
+            // JS_BUNDLE_MODULE_ENTRYPOINT
+            import { ex1 as v3, ex2 as v4 } from "module.mjs";
+            v3 + v4;
 
             """
 

@@ -181,7 +181,8 @@ struct ContextAnalyzer: Analyzer {
         if instr.isBlockStart {
             var newContext = instr.op.contextOpened
             if instr.propagatesSurroundingContext {
-                newContext.formUnion(context)
+                // The .moduleTopLevel context is never propagated to scopes.
+                newContext = newContext.union(context).subtracting(.moduleTopLevel)
             }
 
             // If we resume the context analysis, we currently take the second to last context.
