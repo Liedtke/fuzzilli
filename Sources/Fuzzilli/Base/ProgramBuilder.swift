@@ -813,7 +813,14 @@ public class ProgramBuilder {
                     }
 
                     let element = self.generateTypeInternal(iterableElementType)
-                    return self.createArray(with: [element])
+                    guard let elementGroupName = iterableElementType.group else {
+                        self.logger.warning(
+                            "Type argument \(iterableElementType) does not have a group. Creating non-parameterized array."
+                        )
+                        return self.createArray(with: [element])
+                    }
+
+                    return self.createArray(with: [element], elementGroupName: elementGroupName)
                 },
             .function():
                 {
@@ -3133,9 +3140,14 @@ public class ProgramBuilder {
     }
 
     @discardableResult
-    public func createArray(with initialValues: [Variable]) -> Variable {
-        return emit(CreateArray(numInitialValues: initialValues.count), withInputs: initialValues)
-            .output
+    public func createArray(with initialValues: [Variable], elementGroupName: String? = nil)
+        -> Variable
+    {
+        return emit(
+            CreateArray(numInitialValues: initialValues.count, elementGroupName: elementGroupName),
+            withInputs: initialValues
+        )
+        .output
     }
 
     @discardableResult

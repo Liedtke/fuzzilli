@@ -1260,18 +1260,24 @@ extension ILType {
     public static let jsSymbol = ILType.object(ofGroup: "Symbol", withProperties: ["description"])
 
     /// Type of a JavaScript array.
-    public static let jsArray =
-        ILType.iterable()
-        + ILType.object(
-            ofGroup: "Array", withProperties: ["length"],
-            withMethods: [
-                "at", "concat", "copyWithin", "fill", "find", "findIndex", "findLast",
-                "findLastIndex", "pop", "push", "reverse", "shift", "unshift", "slice", "sort",
-                "splice", "includes", "indexOf", "keys", "entries", "forEach", "filter", "map",
-                "every", "some", "reduce", "reduceRight", "toString", "toLocaleString",
-                "toReversed", "toSorted", "toSpliced", "with", "join", "lastIndexOf", "values",
-                "flat", "flatMap",
-            ])
+    public static let jsArray = createJsArrayType(ofElementType: nil)
+
+    /// Create a jsArray parameterized by `ofELementType`. Note that the
+    /// element type should have a group, or else type information will be
+    /// lost.
+    public static func createJsArrayType(ofElementType: ILType? = nil) -> ILType {
+        return ILType.iterable(ofElementType: ofElementType)
+            + ILType.object(
+                ofGroup: "Array", withProperties: ["length"],
+                withMethods: [
+                    "at", "concat", "copyWithin", "fill", "find", "findIndex", "findLast",
+                    "findLastIndex", "pop", "push", "reverse", "shift", "unshift", "slice", "sort",
+                    "splice", "includes", "indexOf", "keys", "entries", "forEach", "filter", "map",
+                    "every", "some", "reduce", "reduceRight", "toString", "toLocaleString",
+                    "toReversed", "toSorted", "toSpliced", "with", "join", "lastIndexOf", "values",
+                    "flat", "flatMap",
+                ])
+    }
 
     /// Type of a JavaScript function's arguments object.
     public static let jsArguments =

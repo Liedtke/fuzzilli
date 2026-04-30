@@ -1927,8 +1927,15 @@ public struct JSTyper: Analyzer {
                 instr.innerOutputs(1...),
                 parameters: inferSubroutineParameterList(of: op, at: instr.index))
 
-        case .createArray,
-            .createIntArray,
+        case .createArray(let op):
+            if let elementGroupName = op.elementGroupName {
+                let elementType = self.environment.type(ofGroup: elementGroupName)
+                set(instr.output, .createJsArrayType(ofElementType: elementType))
+            } else {
+                set(instr.output, .jsArray)
+            }
+
+        case .createIntArray,
             .createFloatArray,
             .createArrayWithSpread:
             set(instr.output, .jsArray)

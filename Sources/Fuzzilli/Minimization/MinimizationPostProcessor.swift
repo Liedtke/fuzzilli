@@ -82,13 +82,15 @@ struct MinimizationPostProcessor {
                     replacementInstruction = Instruction(
                         Construct(numArguments: args.count, isGuarded: op.isGuarded),
                         output: instr.output, inputs: [instr.input(0)] + args)
-                case .createArray:
+                case .createArray(let op):
                     // Add initial values, but only if there are none currently.
                     if instr.hasAnyVariadicInputs || !b.hasVisibleJsVariables { break }
                     let initialValues = [Variable](
                         repeating: b.randomJsVariable(), count: Int.random(in: 1...5))
                     replacementInstruction = Instruction(
-                        CreateArray(numInitialValues: initialValues.count), output: instr.output,
+                        CreateArray(
+                            numInitialValues: initialValues.count,
+                            elementGroupName: op.elementGroupName), output: instr.output,
                         inputs: initialValues)
                 default:
                     assert(!(instr.op is EndAnyFunction))

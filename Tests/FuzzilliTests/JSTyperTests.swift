@@ -1064,6 +1064,36 @@ class JSTyperTests: XCTestCase {
         XCTAssertEqual(b.type(of: a), ILType.jsArray)
     }
 
+    func testParameterizedArrayCreation() {
+        let propFooType = ILType.float
+        let fooElement = ILType.object(ofGroup: "FooElement", withProperties: ["foo"])
+        let additionalObjectGroups: [ObjectGroup] = [
+            ObjectGroup(
+                name: "FooElement",
+                instanceType: fooElement,
+                properties: [
+                    "foo": propFooType
+                ],
+                methods: [:])
+        ]
+
+        let env = JavaScriptEnvironment(additionalObjectGroups: additionalObjectGroups)
+        let fuzzer = makeMockFuzzer(environment: env)
+        let b = fuzzer.makeBuilder()
+
+        let a1 = b.createArray(with: [], elementGroupName: "FooElement")
+        XCTAssertEqual(
+            b.type(of: a1),
+            ILType.createJsArrayType(ofElementType: fooElement))
+
+        // For an unregistered group, resulting `jsArray` will have element type `.jsAnything`
+        let a2 = b.createArray(with: [], elementGroupName: "UnknownGroup")
+        XCTAssertEqual(b.type(of: a2), ILType.createJsArrayType(ofElementType: .jsAnything))
+
+        let a3 = b.createArray(with: [])
+        XCTAssertEqual(b.type(of: a3), ILType.jsArray)
+    }
+
     func testSuperBinding() {
         let fuzzer = makeMockFuzzer()
         let b = fuzzer.makeBuilder()
