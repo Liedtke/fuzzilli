@@ -65,7 +65,8 @@ public class InputMutator: BaseInstructionMutator {
 
         // In wasm we need strict typing, so there is no notion of loose or aware.
         if b.context.contains(.wasm) || b.context.contains(.wasmFunction)
-            || b.context.contains(.wasmTypeGroup)
+            || b.context.contains(.wasmTypeGroup) || instr.op is LoopContinue
+            || instr.op is LoopBreak || instr.op is BlockBreak
         {
             let type = b.type(of: inouts[selectedInput])
             // TODO(mliedtke): For type definitions we need a lot of consistency. E.g. the signature
