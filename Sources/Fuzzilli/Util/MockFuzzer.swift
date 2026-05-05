@@ -27,13 +27,16 @@ struct MockExecution: Execution {
 class MockScriptRunner: ScriptRunner {
     var processArguments: [String] = []
     var env: [(String, String)] = []
+    var stdoutToReturn = ""
+    var stderrToReturn = ""
+    var fuzzoutToReturn = ""
 
     func run(_ script: String, withTimeout timeout: UInt32) -> Execution {
         return MockExecution(
             outcome: .succeeded,
-            stdout: "",
-            stderr: "",
-            fuzzout: "",
+            stdout: stdoutToReturn,
+            stderr: stderrToReturn,
+            fuzzout: fuzzoutToReturn,
             execTime: TimeInterval(0.1))
     }
 
