@@ -2050,7 +2050,8 @@ public let CodeGenerators: [CodeGenerator] = [
             b.hide(Map)
             iterable = b.construct(Map)
             for _ in 0..<topLevelIterableSize {
-                // The key and the value don't need to be iterables themselves, any values will do.
+                // A Map is an iterable that yields [key, value] arrays, which are themselves iterables;
+                // so here the key and the value may be anything.
                 let key = b.randomJsVariable()
                 let value = b.randomJsVariable()
                 b.callMethod("set", on: iterable, withArgs: [key, value])
@@ -2058,13 +2059,30 @@ public let CodeGenerators: [CodeGenerator] = [
         }
 
         let iteratorConstructor = b.createNamedVariable(forBuiltin: "Iterator")
-        let arguments: [Variable]
-        if probability(0.5) {
-            arguments = [iterable]
-        } else {
-            arguments = [iterable, b.createOptionsBag(.jsIteratorZipSettings)]
-        }
+        let arguments =
+            probability(0.5)
+            ? [iterable]
+            : [iterable, b.createOptionsBag(.jsIteratorZipSettings)]
         b.callMethod("zip", on: iteratorConstructor, withArgs: arguments)
+    },
+
+    CodeGenerator("IteratorZipKeyedGenerator", inputs: .one) { b, val in
+        // Create an object whose values are iterables
+        let topLevelIterableSize = Int.random(in: 0...10)
+        let keyedIterables = b.buildObjectLiteral { obj in
+            for _ in 0..<topLevelIterableSize {
+                let propertyName = b.randomPropertyName()
+                let iterable = b.randomVariable(ofType: .iterable()) ?? val
+                obj.addProperty(propertyName, as: iterable)
+            }
+        }
+
+        let iteratorConstructor = b.createNamedVariable(forBuiltin: "Iterator")
+        let arguments =
+            probability(0.5)
+            ? [keyedIterables]
+            : [keyedIterables, b.createOptionsBag(.jsIteratorZipSettings)]
+        b.callMethod("zipKeyed", on: iteratorConstructor, withArgs: arguments)
     },
 
     CodeGenerator(

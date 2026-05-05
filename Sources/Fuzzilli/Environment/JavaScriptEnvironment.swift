@@ -1297,7 +1297,7 @@ extension ILType {
     /// Type of the JavaScript Iterator constructor builtin.
     public static let jsIteratorConstructor = ILType.object(
         ofGroup: "IteratorConstructor", withProperties: ["prototype"],
-        withMethods: ["from", "concat", "zip"])
+        withMethods: ["from", "concat", "zip", "zipKeyed"])
 
     /// Type of a JavaScript generator object.
     public static let jsGenerator =
@@ -2194,6 +2194,8 @@ extension ObjectGroup {
             "from": [.jsAnything] => .jsIterator,
             "concat": [.jsAnything...] => .jsIterator,
             "zip": [.iterable, .opt(OptionsBag.jsIteratorZipSettings.group.instanceType)]
+                => .jsIterator,
+            "zipKeyed": [.object(), .opt(OptionsBag.jsIteratorZipSettings.group.instanceType)]
                 => .jsIterator,
         ]
     )
