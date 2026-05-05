@@ -938,8 +938,8 @@ public class ProgramBuilder {
                                 produces.type.Is(type)
                             })
                     })
-                    // If there is a CodeGenerator marked as producing this type, use it with high probability.
-                    if generators.count > 0 && probability(0.75) {
+
+                    func useGenerator() -> Variable {
                         let generator = generators.randomElement()
                         let _ = self.complete(generator: generator, withBudget: 10)
                         guard let variable = self.randomVariable(ofTypeOrSubtype: type) else {
@@ -948,6 +948,11 @@ public class ProgramBuilder {
                                     + "\(type). Either the generator or its annotation is wrong.")
                         }
                         return variable
+                    }
+
+                    // If there is a CodeGenerator marked as producing this type, use it with high probability.
+                    if generators.count > 0 && probability(0.75) {
+                        return useGenerator()
                     }
 
                     let producingMethods = self.fuzzer.environment.getProducingMethods(ofType: type)
@@ -978,6 +983,12 @@ public class ProgramBuilder {
                     } else if let property = maybeProperty {
                         return usePropertyToProduce(property)
                     }
+
+                    // We might have skipped generators before; try them again before returning a less relevant object.
+                    if generators.count > 0 {
+                        return useGenerator()
+                    }
+
                     // Otherwise this is one of the following:
                     // 1. an object with more type information, i.e. it has a group, but no associated builtin, e.g. we cannot construct it with new.
                     // 2. an object without a group, but it has some required fields.
