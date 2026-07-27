@@ -298,7 +298,7 @@ struct TypeSystemTests {
         #expect(!unionType.Is(.object() + .function()))
         #expect(!unionType.Is(.object() + .constructor()))
         #expect(!unionType.Is(.constructor()))
-        #expect(!unionType.Is(.function() + .constructor()))
+        #expect(unionType.Is(.function() + .constructor()))
     }
 
     @Test
