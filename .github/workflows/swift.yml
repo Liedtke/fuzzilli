@@ -23,6 +23,15 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
+      - name: Install node.js & unzip for JSVU
+        if: ${{ matrix.os == 'ubuntu-latest' }}
+        run: sudo apt update && sudo apt install -y unzip nodejs
+      - name: Install jsvu
+        run: npm install jsvu -g
+      - name: Install d8
+        run: jsvu --os=default --engines=v8
+      - name: d8 version
+        run: ~/.jsvu/engines/v8/v8 --version
       - uses: actions/setup-node@v7
         with:
           node-version: 27-nightly
@@ -49,14 +58,5 @@ jobs:
       #   run: python3 Tools/presubmit.py
       # - name: Run tests with Node.js
       #   run: Tools/run_tests.py Tests/failing_nodejs.txt -c ${{ matrix.kind }}
-      - name: Install unzip for JSVU
-        if: ${{ matrix.os == 'ubuntu-latest' }}
-        run: sudo apt update && sudo apt install -y unzip
-      - name: Install jsvu
-        run: npm install jsvu -g
-      - name: Install d8
-        run: jsvu --os=default --engines=v8
-      - name: d8 version
-        run: ~/.jsvu/engines/v8/v8 --version
       - name: Run tests with d8
         run: FUZZILLI_TEST_SHELL=~/.jsvu/engines/v8/v8 Tools/run_tests.py Tests/failing_jsvu.txt -c ${{ matrix.kind }}
