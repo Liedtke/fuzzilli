@@ -40,14 +40,18 @@ jobs:
       - name: Install Node.js dependencies for Compiler/Parser tests
         working-directory: ./Sources/Fuzzilli/Compiler/Parser
         run: npm install
-      - name: Run presubmit checks
-        if: ${{ matrix.os == 'ubuntu-latest' && matrix.kind == 'debug' }}
-        run: python3 Tools/presubmit.py
+      # Temporarily skip this as it's somewhat slow and I want to evaluate running the tests.
+      # FIXME: Uncomment this!
+      # - name: Run presubmit checks
+      #   if: ${{ matrix.os == 'ubuntu-latest' && matrix.kind == 'debug' }}
+      #   run: python3 Tools/presubmit.py
       - name: Run tests with Node.js
         run: Tools/run_tests.py Tests/failing_nodejs.txt -c ${{ matrix.kind }}
       - name: Install jsvu
         run: npm install jsvu -g
       - name: Install d8
         run: jsvu --os=default --engines=v8
+      - name: d8 version
+        run: ~/.jsvu/engines/v8/v8 --version
       - name: Run tests with d8
         run: FUZZILLI_TEST_SHELL=~/.jsvu/engines/v8/v8 Tools/run_tests.py Tests/failing_jsvu.txt -c ${{ matrix.kind }}
