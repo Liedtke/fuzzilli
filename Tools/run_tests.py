@@ -66,10 +66,8 @@ def run_tests_and_parse():
     unexpected_failures = actual_failing_names - expected_failures
     unexpected_passes = (expected_failures & run_names) - actual_failing_names
 
-    print("")
-
     if not unexpected_failures and not unexpected_passes:
-        print(f"All run tests matched expectations ({len(expected_failures)} expected failure(s))")
+        print(f"\nAll run tests matched expectations ({len(expected_failures)} expected failure(s))")
         return 0
 
     for (title, unexpected) in ("Failures", unexpected_failures), ("Passes", unexpected_passes):
