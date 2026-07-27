@@ -29,11 +29,6 @@ jobs:
         run: jsvu --os=default --engines=v8
       - name: d8 version
         run: ~/.jsvu/engines/v8/v8 --version
-      - name: Install Node.js dependencies for Compiler/Parser tests
-        working-directory: ./Sources/Fuzzilli/Compiler/Parser
-        run: npm install
-      # Make sure to run all regular Node.js / npm work before this step as jsvu and other parts
-      # seem to have issues with Node.js nightly.
       - uses: actions/setup-node@v7
         with:
           node-version: 27-nightly
@@ -51,6 +46,9 @@ jobs:
       - name: Run presubmit checks
         if: ${{ matrix.os == 'ubuntu-latest' && matrix.kind == 'debug' }}
         run: python3 Tools/presubmit.py
+      - name: Install Node.js dependencies for Compiler/Parser tests
+        working-directory: ./Sources/Fuzzilli/Compiler/Parser
+        run: npm install
       - name: Run tests with Node.js
         run: Tools/run_tests.py Tests/failing_nodejs.txt -c ${{ matrix.kind }}
       - name: Run tests with d8
