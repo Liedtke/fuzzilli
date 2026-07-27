@@ -50,6 +50,6 @@ jobs:
         if: ${{ matrix.os == 'ubuntu-latest' && matrix.kind == 'debug' }}
         run: python3 Tools/presubmit.py
       - name: Run tests with Node.js
-        run: Tools/run_tests.py Tests/failing_nodejs.txt -c ${{ matrix.kind }}
+        run: Tools/run_tests.py Tests/failing_nodejs.txt -c ${{ matrix.kind }} --no-parallel
       - name: Run tests with d8
-        run: FUZZILLI_TEST_SHELL=~/.jsvu/engines/v8/v8 Tools/run_tests.py Tests/failing_jsvu.txt -c ${{ matrix.kind }}
+        run: FUZZILLI_TEST_SHELL=~/.jsvu/engines/v8/v8 Tools/run_tests.py Tests/failing_jsvu.txt -c ${{ matrix.kind }} --no-parallel
