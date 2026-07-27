@@ -49,6 +49,9 @@ jobs:
       #   run: python3 Tools/presubmit.py
       # - name: Run tests with Node.js
       #   run: Tools/run_tests.py Tests/failing_nodejs.txt -c ${{ matrix.kind }}
+      - name: Install unzip for JSVU
+        if: ${{ matrix.os == 'ubuntu-latest' }}
+        run: sudo apt update && sudo apt install -y unzip
       - name: Install jsvu
         run: npm install jsvu -g
       - name: Install d8
