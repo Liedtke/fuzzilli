@@ -53,3 +53,24 @@ jobs:
         run: Tools/run_tests.py Tests/failing_nodejs.txt -c ${{ matrix.kind }} --no-parallel
       - name: Run tests with d8
         run: FUZZILLI_TEST_SHELL=~/.jsvu/engines/v8/v8 Tools/run_tests.py Tests/failing_jsvu.txt -c ${{ matrix.kind }} --no-parallel
+
+  asan:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install jsvu
+        run: npm install jsvu -g
+      - name: Install d8
+        run: jsvu --os=default --engines=v8
+      - name: d8 version
+        run: ~/.jsvu/engines/v8/v8 --version
+      - name: Install Node.js dependencies for Compiler/Parser tests
+        working-directory: ./Sources/Fuzzilli/Compiler/Parser
+        run: npm install
+      - name: Swift Version
+        run: swift --version
+      - name: Run tests with leak sanitization
+        run: |
+          set -o pipefail
+          FUZZILLI_TEST_SHELL=~/.jsvu/engines/v8/v8 ASAN_OPTIONS=detect_leaks=1 LSAN_OPTIONS=suppressions=$PWD/Tests/lsan_suppressions.txt swift test --sanitize=address --no-parallel 2>&1 | swift demangle

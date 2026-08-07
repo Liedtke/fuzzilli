@@ -1,0 +1,7 @@
+# static objects that are created once per thread are not relevant.
+leak:swift::threading_impl::once_slow
+# Apparently some side-table business for weak references in the Swift runtime.
+leak:formWeakReference
+# We don't use XCTest any more, still "swift test" invokes the XCTest runner to detect 0 tests and
+# then finish, still reporting some leaks on that way.
+leak:XCTest
