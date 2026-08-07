@@ -55,6 +55,7 @@ jobs:
         run: FUZZILLI_TEST_SHELL=~/.jsvu/engines/v8/v8 Tools/run_tests.py Tests/failing_jsvu.txt -c ${{ matrix.kind }} --no-parallel
 
   asan:
+    timeout-minutes: 30
     runs-on: ubuntu-latest
 
     steps:
@@ -70,7 +71,13 @@ jobs:
         run: npm install
       - name: Swift Version
         run: swift --version
+      - name: Install LLVM
+        run: sudo apt update && sudo apt install -y llvm
       - name: Run tests with leak sanitization
         run: |
           set -o pipefail
-          FUZZILLI_TEST_SHELL=~/.jsvu/engines/v8/v8 ASAN_OPTIONS=detect_leaks=1 LSAN_OPTIONS=suppressions=$PWD/Tests/lsan_suppressions.txt swift test --sanitize=address --no-parallel 2>&1 | swift demangle
+          export ASAN_SYMBOLIZER_PATH=$(which llvm-symbolizer)
+          export FUZZILLI_TEST_SHELL=~/.jsvu/engines/v8/v8
+          export ASAN_OPTIONS=detect_leaks=1
+          export LSAN_OPTIONS=suppressions=$PWD/Tests/lsan_suppressions.txt
+          swift test --sanitize=address --no-parallel 2>&1 | swift demangle
